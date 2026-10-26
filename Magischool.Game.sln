@@ -1,0 +1,49 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sim", "sim", "{D1E2735D-148D-45BC-AC38-149D3F9D9FFC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Magischool.Sim", "sim\Magischool.Sim\Magischool.Sim.csproj", "{8A2DAB5D-7A4C-41A6-AED5-30C5C2B34F78}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Magischool.Sim.Tests", "sim\Magischool.Sim.Tests\Magischool.Sim.Tests.csproj", "{2E3E3570-1E91-4560-83C3-3C06CD904930}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{81244160-CD2C-4138-A0A7-0FEA7417A155}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Magischool.Cli", "tools\Magischool.Cli\Magischool.Cli.csproj", "{DDBC5139-060F-4146-A9CB-9481C857D8F6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Magischool.Game", "game\Magischool.Game.csproj", "{474653AE-AEA4-45E4-B13C-29D09552D838}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8A2DAB5D-7A4C-41A6-AED5-30C5C2B34F78}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8A2DAB5D-7A4C-41A6-AED5-30C5C2B34F78}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8A2DAB5D-7A4C-41A6-AED5-30C5C2B34F78}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8A2DAB5D-7A4C-41A6-AED5-30C5C2B34F78}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2E3E3570-1E91-4560-83C3-3C06CD904930}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2E3E3570-1E91-4560-83C3-3C06CD904930}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2E3E3570-1E91-4560-83C3-3C06CD904930}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2E3E3570-1E91-4560-83C3-3C06CD904930}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DDBC5139-060F-4146-A9CB-9481C857D8F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DDBC5139-060F-4146-A9CB-9481C857D8F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DDBC5139-060F-4146-A9CB-9481C857D8F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DDBC5139-060F-4146-A9CB-9481C857D8F6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{474653AE-AEA4-45E4-B13C-29D09552D838}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{474653AE-AEA4-45E4-B13C-29D09552D838}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{474653AE-AEA4-45E4-B13C-29D09552D838}.Release|Any CPU.ActiveCfg = Debug|Any CPU
+		{474653AE-AEA4-45E4-B13C-29D09552D838}.Release|Any CPU.Build.0 = Debug|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{8A2DAB5D-7A4C-41A6-AED5-30C5C2B34F78} = {D1E2735D-148D-45BC-AC38-149D3F9D9FFC}
+		{2E3E3570-1E91-4560-83C3-3C06CD904930} = {D1E2735D-148D-45BC-AC38-149D3F9D9FFC}
+		{DDBC5139-060F-4146-A9CB-9481C857D8F6} = {81244160-CD2C-4138-A0A7-0FEA7417A155}
+	EndGlobalSection
+EndGlobal
