@@ -42,3 +42,19 @@ owner answers; answered questions move to [DECISIONS.md](DECISIONS.md).
 
 10. **How big is the slum city?** Default: about 6 x 6 blocks, roughly
     200 x 200 tiles and 6 z-levels (basement to rooftops).
+
+## Raised by the school day
+
+11. **What happens to the world during long waits?** A two-hour class is
+    72,000 ticks and a night's sleep is about 290,000. Default: only "active"
+    tiles (something changing nearby) are simulated tick by tick; settled areas
+    sleep and catch up in one calculated jump when touched. The result is the
+    same physics, just skipping work where nothing is happening.
+12. **Are test questions grounded in the real sim?** Default: yes. Questions
+    are generated from the actual material and spell data ("Which melts first
+    in a fire, the lead pipe or the iron gate?"), so studying the world and
+    passing the test are the same skill, and the answers are always true in
+    this world.
+13. **Does the player physically attend class?** Default: yes. The class is a
+    place in the world, the PC sits there while time passes, and anything that
+    happens elsewhere during those two hours still happens.

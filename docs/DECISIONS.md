@@ -4,6 +4,19 @@ The running record of what has been decided, newest first. Anything here is
 settled until the owner says otherwise; open questions live in
 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
 
+## 2026-10-26: The school day and learning spells
+
+**Classes follow a real-world schedule.** A player who sleeps at normal times
+wakes at 6 am and has a couple of hours before class. Each class takes about
+two in-game hours, with 3 to 4 classes per day.
+
+**Spells are learned by passing tests.** Classes end in tests, and a spell is
+learned only when its test is passed. A player may skip every class and still
+learn spells by passing multiple-choice tests about the magical world.
+
+**Physics first, story later.** Story beats are irrelevant until there is a
+unified theory of the magical and mundane physics of the world.
+
 ## 2026-10-26: Direction from the owner
 
 **The simulation is the game.** World physics come before story. The game
