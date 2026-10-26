@@ -45,7 +45,8 @@ public class PhaseTests
         sim.Step();
         Assert.Equal(Water, sim.Grid.Material[0]);
         Assert.Equal(0.0, sim.Grid.LatentEnergy[0]);
-        Assert.True(sim.Grid.Temperature[0] > Melt && sim.Grid.Temperature[0] < Melt + 1e-6);
+        // The 1 J left over warms the new water: 1 J / (mass × 4186 J/(kg·K)).
+        Assert.Equal(Melt + 1.0 / (sim.Grid.Mass[0] * 4186.0), sim.Grid.Temperature[0], 9);
     }
 
     [Fact]
@@ -116,7 +117,7 @@ public class PhaseTests
         ice.Enqueue(new AddHeat(0, 0, 0, 334_000.0 * ice.Grid.Mass[0] + 1));
         ice.Step();
         Assert.Equal(Water, ice.Grid.Material[0]);
-        Assert.Equal(917.0, ice.Grid.Mass[0], 6);
+        Assert.Equal(917.0 * WorldGrid.TileVolumeM3, ice.Grid.Mass[0], 6);
         Assert.Equal(0.917, ice.Grid.FillFraction(0), 6);
 
         var water = SingleTile(Water, Melt);

@@ -13,9 +13,9 @@ namespace Magischool.Sim.Thermal;
 /// does the material change. Cooling works the same way in reverse, and a
 /// half-melted tile that starts cooling gives its stored energy back first.
 ///
-/// Mass is kept through every change, so 917 kg of ice becomes 917 kg of
-/// water (a tile 92% full) and 1000 kg of water freezes into ice that needs
-/// 109% of a tile. Spreading the extra volume is the fluids layer's job, and
+/// Mass is kept through every change, so a tile of ice becomes the same mass
+/// of water (a tile 92% full), and a tile of water freezes into ice that
+/// needs 109% of a tile. Spreading the extra volume is the fluids layer's job, and
 /// the squeeze is the structure layer's.
 ///
 /// Runs after <see cref="ThermalSystem"/> each tick. Energy is conserved
