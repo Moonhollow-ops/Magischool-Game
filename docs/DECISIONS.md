@@ -4,6 +4,18 @@ The running record of what has been decided, newest first. Anything here is
 settled until the owner says otherwise; open questions live in
 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
 
+## 2026-10-26: Fidelity over everything
+
+**This is the owner's magnum opus. Time and money are not a factor; only the
+world matters.** When a choice trades simulation fidelity against development
+time or compute cost, choose fidelity, and solve the cost with engineering
+(active-region simulation, multithreading, smarter algorithms), not by
+simplifying the physics.
+
+**Tiles are 0.5 m cubes.** A person is about 4 tiles tall; a pipe, door or
+hinge is about one tile. Chosen over 1 m (too coarse: freezing one tile of
+water took as much energy as 80 kg of TNT) and 0.25 m (64× the cost of 1 m).
+
 ## 2026-10-26: The school day and learning spells
 
 **Classes follow a real-world schedule.** A player who sleeps at normal times

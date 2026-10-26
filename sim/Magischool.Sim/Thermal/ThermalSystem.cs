@@ -12,9 +12,9 @@ namespace Magischool.Sim.Thermal;
 /// G × ΔT watts. Each face's transfer is subtracted from one tile and added to
 /// the other, so energy is conserved to double precision.
 ///
-/// <para>Solids conduct: a half tile's resistance is (0.5 m) / k.</para>
+/// <para>Solids conduct: a half tile's resistance is (half a tile) / (k × face area).</para>
 /// <para>
-/// Fluids also convect, which at a 1 m scale carries far more heat than
+/// Fluids also convect, which at tile scale carries far more heat than
 /// conduction (still air conducts so poorly that a hot stone would take days
 /// to warm the air beside it). Until real fluid flow arrives in layer 4, a
 /// fluid's side of a face uses whichever is lower: its conduction resistance
@@ -36,8 +36,8 @@ public sealed class ThermalSystem : ISimSystem
     /// <summary>Faces per tile. Each face may move at most 1/6 of the energy that would equalise it, so a tile can never overshoot.</summary>
     private const int FacesPerTile = 6;
 
-    private const float FaceAreaM2 = 1f;
-    private const float HalfTileM = 0.5f;
+    private const double FaceAreaM2 = WorldGrid.TileFaceAreaM2;
+    private const double HalfTileM = WorldGrid.TileSizeM / 2;
 
     private MaterialTable? _preparedFor;
     private double[] _halfResistance = Array.Empty<double>();

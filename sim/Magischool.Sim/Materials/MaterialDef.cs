@@ -58,7 +58,7 @@ public sealed record MaterialDef
     public float AntiMagicInsulation { get; init; }
 
     /// <summary>Mass of one tile filled exactly to this material's density, kg.</summary>
-    public double FullTileMass => (double)Density * Core.WorldGrid.TileVolumeM3;
+    public double FullTileMass => Density * Core.WorldGrid.TileVolumeM3;
 
     /// <summary>Heat capacity of one full tile, J/K.</summary>
     public double TileHeatCapacity => FullTileMass * SpecificHeat;

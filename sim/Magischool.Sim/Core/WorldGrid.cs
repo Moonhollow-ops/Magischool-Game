@@ -5,13 +5,14 @@ namespace Magischool.Sim.Core;
 
 /// <summary>
 /// The world as flat per-property arrays (structure of arrays), indexed by
-/// <c>(z * Height + y) * Width + x</c>. One tile is one cubic metre.
+/// <c>(z * Height + y) * Width + x</c>. One tile is a cube
+/// <see cref="TileSizeM"/> on each side (half a metre).
 /// z = 0 is the lowest layer.
 ///
 /// Each tile holds one material with an explicit mass. A tile filled exactly
 /// to its material's density has <see cref="FillFraction"/> 1. Less than 1
-/// means part of the tile is empty (melted ice is 917 kg of water, not a full
-/// 1000 kg); more than 1 means the material is squeezed in under pressure
+/// means part of the tile is empty (melted ice is 91.7% as heavy as the water
+/// that would fill the tile); more than 1 means the material is squeezed in under pressure
 /// (freezing water expands), which the structure layer turns into stress.
 ///
 /// Each physics layer adds its own channel here. Keep channels as flat
@@ -19,7 +20,10 @@ namespace Magischool.Sim.Core;
 /// </summary>
 public sealed class WorldGrid
 {
-    public const float TileVolumeM3 = 1f;
+    /// <summary>Edge length of one tile in metres. A person is about 4 tiles tall.</summary>
+    public const double TileSizeM = 0.5;
+    public const double TileFaceAreaM2 = TileSizeM * TileSizeM;
+    public const double TileVolumeM3 = TileSizeM * TileSizeM * TileSizeM;
 
     public readonly int Width;
     public readonly int Height;

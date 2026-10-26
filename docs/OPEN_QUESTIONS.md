@@ -5,8 +5,7 @@ owner answers; answered questions move to [DECISIONS.md](DECISIONS.md).
 
 ## Needed for layer 2 (heat) and beyond
 
-1. **How big is one tile?** 1 m cube (default; a door or a pipe is one tile)
-   or 0.5 m (finer, a person is about 4 tiles tall, 8x more tiles per room)?
+1. ~~How big is one tile?~~ Answered: 0.5 m (see DECISIONS.md).
 2. **Does the world freeze completely between actions?** Default: yes, nothing
    happens until you act, as in Dwarf Fortress Adventure Mode.
 3. **How strict is the physics?** Default: strict conservation. Energy and mass
@@ -41,7 +40,7 @@ owner answers; answered questions move to [DECISIONS.md](DECISIONS.md).
 ## Needed for the city
 
 10. **How big is the slum city?** Default: about 6 x 6 blocks, roughly
-    200 x 200 tiles and 6 z-levels (basement to rooftops).
+    400 x 400 tiles and 12 z-levels at 0.5 m tiles (basement to rooftops).
 
 ## Raised by the school day
 
