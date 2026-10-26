@@ -50,11 +50,10 @@ owner answers; answered questions move to [DECISIONS.md](DECISIONS.md).
     tiles (something changing nearby) are simulated tick by tick; settled areas
     sleep and catch up in one calculated jump when touched. The result is the
     same physics, just skipping work where nothing is happening.
-12. **Are test questions grounded in the real sim?** Default: yes. Questions
-    are generated from the actual material and spell data ("Which melts first
-    in a fire, the lead pipe or the iron gate?"), so studying the world and
-    passing the test are the same skill, and the answers are always true in
-    this world.
+12. **Are test questions grounded in the real sim?** Partly answered: tests are
+    tied to classes and professors teach the mechanics. Still open: should the
+    questions be generated from the actual material and spell data, so answers
+    are always true in this world? Default: yes.
 13. **Does the player physically attend class?** Default: yes. The class is a
     place in the world, the PC sits there while time passes, and anything that
     happens elsewhere during those two hours still happens.

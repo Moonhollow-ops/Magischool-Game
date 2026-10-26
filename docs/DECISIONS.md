@@ -14,6 +14,15 @@ two in-game hours, with 3 to 4 classes per day.
 learned only when its test is passed. A player may skip every class and still
 learn spells by passing multiple-choice tests about the magical world.
 
+**Long stretches of time pass through activities.** Study (raises the
+attributes you choose to study), Hang out (time with an NPC), and a few other
+time-consuming activities. Exploring dungeons and the world also spends ticks.
+The world keeps simulating during an activity; the activity is just how the
+player spends that time.
+
+**Tests are tied to classes.** Professors teach how the world's mechanics work
+as well as the test answers, so attending class is the main route to passing.
+
 **Physics first, story later.** Story beats are irrelevant until there is a
 unified theory of the magical and mundane physics of the world.
 
