@@ -22,8 +22,12 @@ public sealed class WorldGrid
     /// <summary>Material id per tile, see <see cref="Materials.MaterialTable"/>.</summary>
     public readonly ushort[] Material;
 
-    /// <summary>Temperature per tile in kelvin.</summary>
-    public readonly float[] Temperature;
+    /// <summary>
+    /// Temperature per tile in kelvin. Double, not float: a float can't resolve
+    /// the tiny per-tick changes of slow conduction at room temperature, and the
+    /// rounding silently destroys energy.
+    /// </summary>
+    public readonly double[] Temperature;
 
     public WorldGrid(int width, int height, int depth)
     {
@@ -38,7 +42,7 @@ public sealed class WorldGrid
         Depth = depth;
         Count = (int)count;
         Material = new ushort[Count];
-        Temperature = new float[Count];
+        Temperature = new double[Count];
     }
 
     public int Index(int x, int y, int z) => (z * Height + y) * Width + x;
@@ -53,13 +57,13 @@ public sealed class WorldGrid
     public bool InBounds(int x, int y, int z) =>
         (uint)x < (uint)Width && (uint)y < (uint)Height && (uint)z < (uint)Depth;
 
-    public void Fill(ushort material, float temperatureK)
+    public void Fill(ushort material, double temperatureK)
     {
         Array.Fill(Material, material);
         Array.Fill(Temperature, temperatureK);
     }
 
-    public void Set(int x, int y, int z, ushort material, float temperatureK)
+    public void Set(int x, int y, int z, ushort material, double temperatureK)
     {
         int i = Index(x, y, z);
         Material[i] = material;

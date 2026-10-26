@@ -71,5 +71,10 @@ holding.
   (`SeedHash.Derive(seed, "worldgen")`) so adding randomness to one system never
   changes another's rolls. PCG32 only; never `System.Random` or
   `string.GetHashCode()`.
+- **Heat (layer 2):** pairwise face conductances, so energy is conserved to
+  double precision. Fluids use a natural-convection film (air 10, water
+  500 W/(m²·K)) until real fluid flow exists. Temperatures are stored as
+  doubles because floats silently lost slow conduction. Radiation is not
+  modelled yet.
 - **Input:** all outside changes enter the world as `WorldCommand`s applied at
   the start of a tick. That is what makes replays exact.
