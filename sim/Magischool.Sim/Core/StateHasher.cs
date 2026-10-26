@@ -22,6 +22,8 @@ internal static class StateHasher
         ulong hash = SeedHash.Hash(MemoryMarshal.AsBytes(header));
         hash = SeedHash.Hash(MemoryMarshal.AsBytes(grid.Material.AsSpan()), hash);
         hash = SeedHash.Hash(MemoryMarshal.AsBytes(grid.Temperature.AsSpan()), hash);
+        hash = SeedHash.Hash(MemoryMarshal.AsBytes(grid.Mass.AsSpan()), hash);
+        hash = SeedHash.Hash(MemoryMarshal.AsBytes(grid.LatentEnergy.AsSpan()), hash);
         return hash;
     }
 }

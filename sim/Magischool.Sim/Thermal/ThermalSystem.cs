@@ -41,7 +41,8 @@ public sealed class ThermalSystem : ISimSystem
 
     private MaterialTable? _preparedFor;
     private double[] _halfResistance = Array.Empty<double>();
-    private double[] _capacity = Array.Empty<double>();
+    private double[] _specificHeat = Array.Empty<double>();
+    private double[] _mass = Array.Empty<double>();
     private double[] _delta = Array.Empty<double>();
 
     public string Name => "thermal";
@@ -70,6 +71,7 @@ public sealed class ThermalSystem : ISimSystem
         var grid = sim.Grid;
         ushort[] material = grid.Material;
         double[] temperature = grid.Temperature;
+        _mass = grid.Mass;
         int width = grid.Width, height = grid.Height, depth = grid.Depth;
         int plane = width * height;
 
@@ -91,7 +93,7 @@ public sealed class ThermalSystem : ISimSystem
         {
             double delta = _delta[i];
             if (delta == 0.0) continue;
-            temperature[i] = Math.Max(0.0, temperature[i] + delta / _capacity[material[i]]);
+            temperature[i] = Math.Max(0.0, temperature[i] + delta / (_mass[i] * _specificHeat[material[i]]));
             _delta[i] = 0.0;
         }
     }
@@ -106,7 +108,8 @@ public sealed class ThermalSystem : ISimSystem
         double joules = conductance * dT * Simulation.SecondsPerTick;
 
         // Never move more than this face's share of what would bring the pair to equilibrium.
-        double ca = _capacity[ma], cb = _capacity[mb];
+        double ca = _mass[a] * _specificHeat[ma], cb = _mass[b] * _specificHeat[mb];
+        if (ca <= 0.0 || cb <= 0.0) return;
         double limit = dT * (ca * cb / (ca + cb)) / FacesPerTile;
         if (Math.Abs(joules) > Math.Abs(limit)) joules = limit;
 
@@ -122,11 +125,11 @@ public sealed class ThermalSystem : ISimSystem
         if (ReferenceEquals(_preparedFor, sim.Materials)) return;
         var table = sim.Materials;
         _halfResistance = new double[table.Count];
-        _capacity = new double[table.Count];
+        _specificHeat = new double[table.Count];
         for (ushort id = 0; id < table.Count; id++)
         {
             _halfResistance[id] = HalfResistance(table[id]);
-            _capacity[id] = table[id].TileHeatCapacity;
+            _specificHeat[id] = table[id].SpecificHeat;
         }
         _preparedFor = table;
     }

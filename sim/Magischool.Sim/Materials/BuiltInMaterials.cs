@@ -16,6 +16,9 @@ public static class BuiltInMaterials
     public const string Water = "water";
     public const string Ice = "ice";
     public const string Steam = "steam";
+    public const string MoltenLead = "molten_lead";
+    public const string MoltenIron = "molten_iron";
+    public const string Magma = "magma";
 
     /// <summary>20 °C.</summary>
     public const float RoomTemperatureK = 293.15f;
@@ -34,6 +37,7 @@ public static class BuiltInMaterials
             Key = Stone, Name = "Granite", Phase = Phase.Solid, Glyph = '#', Color = 0x6E6A66,
             Density = 2700f, SpecificHeat = 790f, ThermalConductivity = 2.8f,
             TensileStrength = 10f, MeltingPoint = 1500f, LatentHeatFusion = 400_000f,
+            MeltsInto = Magma,
             EthericCapacity = 50f, ArcaneConductivity = 0.3f,
         },
         new()
@@ -56,6 +60,7 @@ public static class BuiltInMaterials
             Key = Iron, Name = "Iron", Phase = Phase.Solid, Glyph = 'I', Color = 0x8C96A0,
             Density = 7870f, SpecificHeat = 450f, ThermalConductivity = 80f,
             TensileStrength = 350f, MeltingPoint = 1811f, LatentHeatFusion = 247_000f,
+            MeltsInto = MoltenIron,
             EthericCapacity = 10f, ArcaneConductivity = 0.05f, AntiMagicInsulation = 0.3f,
         },
         new()
@@ -64,6 +69,7 @@ public static class BuiltInMaterials
             Key = Lead, Name = "Lead", Phase = Phase.Solid, Glyph = 'L', Color = 0x50566B,
             Density = 11_340f, SpecificHeat = 129f, ThermalConductivity = 35f,
             TensileStrength = 18f, MeltingPoint = 600.6f, LatentHeatFusion = 23_000f,
+            MeltsInto = MoltenLead,
             EthericCapacity = 5f, ArcaneConductivity = 0.02f, AntiMagicInsulation = 0.9f,
         },
         new()
@@ -90,6 +96,31 @@ public static class BuiltInMaterials
             BoilingPoint = 373.15f, LatentHeatVaporization = 2_257_000f,
             CondensesInto = Water,
             EthericCapacity = 2f, ArcaneConductivity = 0.3f,
+        },
+        new()
+        {
+            // Boiling lead (2022 K) has no vapour material yet, so it stays liquid above that.
+            Key = MoltenLead, Name = "Molten lead", Phase = Phase.Liquid, Glyph = 'l', Color = 0xA8B0C8,
+            Density = 10_660f, SpecificHeat = 142f, ThermalConductivity = 16f,
+            MeltingPoint = 600.6f, LatentHeatFusion = 23_000f,
+            FreezesInto = Lead,
+            EthericCapacity = 5f, ArcaneConductivity = 0.05f, AntiMagicInsulation = 0.9f,
+        },
+        new()
+        {
+            Key = MoltenIron, Name = "Molten iron", Phase = Phase.Liquid, Glyph = 'i', Color = 0xFF8C1A,
+            Density = 6_980f, SpecificHeat = 820f, ThermalConductivity = 40f,
+            MeltingPoint = 1811f, LatentHeatFusion = 247_000f,
+            FreezesInto = Iron,
+            EthericCapacity = 10f, ArcaneConductivity = 0.1f, AntiMagicInsulation = 0.3f,
+        },
+        new()
+        {
+            Key = Magma, Name = "Magma", Phase = Phase.Liquid, Glyph = '%', Color = 0xE0401A,
+            Density = 2_600f, SpecificHeat = 1000f, ThermalConductivity = 1.5f,
+            MeltingPoint = 1500f, LatentHeatFusion = 400_000f,
+            FreezesInto = Stone,
+            EthericCapacity = 60f, ArcaneConductivity = 0.4f,
         },
     };
 

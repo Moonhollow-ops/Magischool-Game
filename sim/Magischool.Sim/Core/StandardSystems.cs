@@ -11,5 +11,6 @@ public static class StandardSystems
     public static ISimSystem[] Create() => new ISimSystem[]
     {
         new ThermalSystem(),
+        new PhaseSystem(),
     };
 }

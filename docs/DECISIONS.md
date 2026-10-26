@@ -76,5 +76,10 @@ holding.
   500 W/(m²·K)) until real fluid flow exists. Temperatures are stored as
   doubles because floats silently lost slow conduction. Radiation is not
   modelled yet.
+- **Mass and phase change (layer 3):** every tile stores the mass of its
+  material, so melting, freezing and boiling keep mass exactly. A tile may be
+  under-full (melted ice) or over-full (frozen water), which the fluids and
+  structure layers act on. Latent heat is stored per tile while a transition
+  is under way, and `EnergyAudit` counts total energy including latent heat.
 - **Input:** all outside changes enter the world as `WorldCommand`s applied at
   the start of a tick. That is what makes replays exact.
