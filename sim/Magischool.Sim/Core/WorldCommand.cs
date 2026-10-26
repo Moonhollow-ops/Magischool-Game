@@ -21,6 +21,7 @@ public abstract record WorldCommand
         {
             SetMaterial.TagValue => new SetMaterial(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(), reader.ReadUInt16()),
             SetTemperature.TagValue => new SetTemperature(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(), reader.ReadSingle()),
+            AddHeat.TagValue => new AddHeat(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(), reader.ReadDouble()),
             _ => throw new InvalidDataException($"Unknown command tag {tag}."),
         };
     }
@@ -48,7 +49,10 @@ public sealed record SetMaterial(int X, int Y, int Z, ushort Material) : WorldCo
     }
 }
 
-/// <summary>Set one tile's temperature in kelvin (debug tool now, spells later).</summary>
+/// <summary>
+/// Set one tile's temperature in kelvin. A debug tool: it creates or destroys
+/// energy, so prefer <see cref="AddHeat"/> for anything that should obey physics.
+/// </summary>
 public sealed record SetTemperature(int X, int Y, int Z, float Kelvin) : WorldCommand
 {
     internal const byte TagValue = 2;
@@ -57,7 +61,7 @@ public sealed record SetTemperature(int X, int Y, int Z, float Kelvin) : WorldCo
     public override void Apply(Simulation sim)
     {
         if (!sim.Grid.InBounds(X, Y, Z)) return;
-        sim.Grid.Temperature[sim.Grid.Index(X, Y, Z)] = MathF.Max(0f, Kelvin);
+        sim.Grid.Temperature[sim.Grid.Index(X, Y, Z)] = Math.Max(0.0, Kelvin);
     }
 
     internal override void Write(BinaryWriter writer)
@@ -65,5 +69,32 @@ public sealed record SetTemperature(int X, int Y, int Z, float Kelvin) : WorldCo
         writer.Write(Tag);
         writer.Write(X); writer.Write(Y); writer.Write(Z);
         writer.Write(Kelvin);
+    }
+}
+
+/// <summary>
+/// Put energy into (or, if negative, take it out of) one tile. This is the
+/// physically honest way for an outside source (a spell, a torch stand-in)
+/// to heat the world: the joules are exact, and the temperature change
+/// follows from the tile's heat capacity. Cannot cool below 0 K.
+/// </summary>
+public sealed record AddHeat(int X, int Y, int Z, double Joules) : WorldCommand
+{
+    internal const byte TagValue = 3;
+    internal override byte Tag => TagValue;
+
+    public override void Apply(Simulation sim)
+    {
+        if (!sim.Grid.InBounds(X, Y, Z)) return;
+        int i = sim.Grid.Index(X, Y, Z);
+        float capacity = sim.Materials[sim.Grid.Material[i]].TileHeatCapacity;
+        sim.Grid.Temperature[i] = Math.Max(0.0, sim.Grid.Temperature[i] + Joules / capacity);
+    }
+
+    internal override void Write(BinaryWriter writer)
+    {
+        writer.Write(Tag);
+        writer.Write(X); writer.Write(Y); writer.Write(Z);
+        writer.Write(Joules);
     }
 }

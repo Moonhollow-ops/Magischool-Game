@@ -23,6 +23,7 @@ Requires the .NET 8 SDK. For the viewer, the **.NET build** of Godot 4.7.
 ```sh
 dotnet test                                    # run all sim tests
 dotnet run --project tools/Magischool.Cli -- --seed moon --z 1
+dotnet run --project tools/Magischool.Cli -- --ticks 600 --heat   # temperatures after 1 min
 ```
 
 Viewer: open `game/project.godot` in Godot 4.7 .NET and press Play.
@@ -30,11 +31,12 @@ Viewer: open `game/project.godot` in Godot 4.7 .NET and press Play.
 | Key | Action |
 | --- | --- |
 | Space / Enter | Wait 1 tick / wait 1 second (10 ticks) |
+| W / H | Wait 1 minute / wait 10 minutes |
 | Q / E | Down / up one z-level |
 | Tab | Toggle the heat overlay |
 | 1 to 9 | Pick a material brush |
 | Left click | Place the brush material (costs 1 tick) |
-| Right click | Heat a tile to 1000 K (Shift: chill to 100 K) |
+| Right click | Set a tile to 1000 K (Shift: 100 K). Debug only: ignores energy conservation |
 | F5 / F9 | Save / load |
 | R | New random seed |
 

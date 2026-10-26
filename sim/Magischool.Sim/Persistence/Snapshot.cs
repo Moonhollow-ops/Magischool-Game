@@ -16,7 +16,7 @@ namespace Magischool.Sim.Persistence;
 public static class Snapshot
 {
     private const uint Magic = 0x5753474D; // "MGSW"
-    public const ushort FormatVersion = 1;
+    public const ushort FormatVersion = 2;
 
     public static void Save(Simulation sim, Stream stream)
     {

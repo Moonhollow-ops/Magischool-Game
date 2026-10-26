@@ -91,7 +91,7 @@ public static class TestRoomGenerator
     }
 
     private static void PlaceBlock(ref Pcg32 rng, WorldGrid grid, int minX, int minY, int maxX, int maxY,
-        ushort material, float temperatureK, int minSize, int maxSize)
+        ushort material, double temperatureK, int minSize, int maxSize)
     {
         if (maxX <= minX || maxY <= minY) return;
         int w = rng.NextInt(minSize, maxSize + 1);
