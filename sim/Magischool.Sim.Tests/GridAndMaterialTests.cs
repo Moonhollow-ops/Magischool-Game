@@ -13,7 +13,7 @@ public class GridAndMaterialTests
     [Fact]
     public void IndexAndCoordinatesRoundTrip()
     {
-        var grid = new WorldGrid(7, 5, 3);
+        var grid = new WorldGrid(7, 5, 3, Table);
         for (int i = 0; i < grid.Count; i++)
         {
             var (x, y, z) = grid.Coordinates(i);
@@ -29,7 +29,7 @@ public class GridAndMaterialTests
     [InlineData(0, 0, 3)]
     public void OutOfBoundsIsRejected(int x, int y, int z)
     {
-        Assert.False(new WorldGrid(7, 5, 3).InBounds(x, y, z));
+        Assert.False(new WorldGrid(7, 5, 3, Table).InBounds(x, y, z));
     }
 
     [Fact]

@@ -20,18 +20,12 @@ public class ThermalTests
 
     private static Simulation Box(int w, int h, int d, ushort fill)
     {
-        var grid = new WorldGrid(w, h, d);
+        var grid = new WorldGrid(w, h, d, Table);
         grid.Fill(fill, Room);
         return new Simulation("thermal-test", grid, Table, new ISimSystem[] { new ThermalSystem() });
     }
 
-    private static double TotalEnergy(Simulation sim)
-    {
-        double total = 0;
-        for (int i = 0; i < sim.Grid.Count; i++)
-            total += Table[sim.Grid.Material[i]].TileHeatCapacity * sim.Grid.Temperature[i];
-        return total;
-    }
+    private static double TotalEnergy(Simulation sim) => EnergyAudit.TotalJoules(sim.Grid);
 
     [Fact]
     public void EnergyIsConservedInTheTestRoom()

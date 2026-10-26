@@ -27,7 +27,7 @@ public abstract record WorldCommand
     }
 }
 
-/// <summary>Replace one tile's material. Temperature is kept, so a placed block takes on its surroundings' heat.</summary>
+/// <summary>Fill one tile with a material. Temperature is kept, so a placed block takes on its surroundings' heat.</summary>
 public sealed record SetMaterial(int X, int Y, int Z, ushort Material) : WorldCommand
 {
     internal const byte TagValue = 1;
@@ -38,7 +38,8 @@ public sealed record SetMaterial(int X, int Y, int Z, ushort Material) : WorldCo
         if (!sim.Grid.InBounds(X, Y, Z)) return;
         if (Material >= sim.Materials.Count)
             throw new ArgumentOutOfRangeException(nameof(Material), $"No material with id {Material}.");
-        sim.Grid.Material[sim.Grid.Index(X, Y, Z)] = Material;
+        int i = sim.Grid.Index(X, Y, Z);
+        sim.Grid.SetAt(i, Material, sim.Grid.Temperature[i], sim.Materials[Material].FullTileMass);
     }
 
     internal override void Write(BinaryWriter writer)
@@ -76,7 +77,9 @@ public sealed record SetTemperature(int X, int Y, int Z, float Kelvin) : WorldCo
 /// Put energy into (or, if negative, take it out of) one tile. This is the
 /// physically honest way for an outside source (a spell, a torch stand-in)
 /// to heat the world: the joules are exact, and the temperature change
-/// follows from the tile's heat capacity. Cannot cool below 0 K.
+/// follows from the tile's heat capacity. The temperature may pass a phase
+/// change point, or even dip below 0 K, for the rest of this tick: the phase
+/// layer then turns the energy into latent heat, or floors it at 0 K.
 /// </summary>
 public sealed record AddHeat(int X, int Y, int Z, double Joules) : WorldCommand
 {
@@ -87,8 +90,9 @@ public sealed record AddHeat(int X, int Y, int Z, double Joules) : WorldCommand
     {
         if (!sim.Grid.InBounds(X, Y, Z)) return;
         int i = sim.Grid.Index(X, Y, Z);
-        float capacity = sim.Materials[sim.Grid.Material[i]].TileHeatCapacity;
-        sim.Grid.Temperature[i] = Math.Max(0.0, sim.Grid.Temperature[i] + Joules / capacity);
+        double capacity = sim.Grid.HeatCapacity(i);
+        if (capacity <= 0.0) return;
+        sim.Grid.Temperature[i] += Joules / capacity;
     }
 
     internal override void Write(BinaryWriter writer)

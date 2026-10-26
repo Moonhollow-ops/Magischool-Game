@@ -57,6 +57,9 @@ public sealed record MaterialDef
     /// <summary>0..1, fraction of passing charge a tile blocks.</summary>
     public float AntiMagicInsulation { get; init; }
 
+    /// <summary>Mass of one tile filled exactly to this material's density, kg.</summary>
+    public double FullTileMass => (double)Density * Core.WorldGrid.TileVolumeM3;
+
     /// <summary>Heat capacity of one full tile, J/K.</summary>
-    public float TileHeatCapacity => Density * Core.WorldGrid.TileVolumeM3 * SpecificHeat;
+    public double TileHeatCapacity => FullTileMass * SpecificHeat;
 }

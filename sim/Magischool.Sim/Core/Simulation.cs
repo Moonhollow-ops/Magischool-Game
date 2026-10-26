@@ -32,6 +32,8 @@ public sealed class Simulation
 
     public Simulation(string seed, WorldGrid grid, MaterialTable materials, IEnumerable<ISimSystem>? systems = null)
     {
+        if (!ReferenceEquals(grid.Materials, materials))
+            throw new ArgumentException("The grid was built with a different material table.", nameof(materials));
         Seed = seed;
         Grid = grid;
         Materials = materials;

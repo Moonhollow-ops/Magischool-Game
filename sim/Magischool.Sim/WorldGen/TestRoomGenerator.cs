@@ -28,7 +28,7 @@ public static class TestRoomGenerator
             throw new ArgumentOutOfRangeException(nameof(width), "The test room needs at least 16 x 12 x 2 tiles.");
 
         var rng = new Pcg32(SeedHash.Derive(seed, "worldgen"));
-        var grid = new WorldGrid(width, height, depth);
+        var grid = new WorldGrid(width, height, depth, materials);
         float room = BuiltInMaterials.RoomTemperatureK;
 
         ushort air = materials.Id(BuiltInMaterials.Air);

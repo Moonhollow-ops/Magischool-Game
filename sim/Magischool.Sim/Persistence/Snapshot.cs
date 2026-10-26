@@ -16,7 +16,7 @@ namespace Magischool.Sim.Persistence;
 public static class Snapshot
 {
     private const uint Magic = 0x5753474D; // "MGSW"
-    public const ushort FormatVersion = 2;
+    public const ushort FormatVersion = 3;
 
     public static void Save(Simulation sim, Stream stream)
     {
@@ -40,6 +40,8 @@ public static class Snapshot
         writer.Write(grid.Depth);
         writer.Write(MemoryMarshal.AsBytes(grid.Material.AsSpan()));
         writer.Write(MemoryMarshal.AsBytes(grid.Temperature.AsSpan()));
+        writer.Write(MemoryMarshal.AsBytes(grid.Mass.AsSpan()));
+        writer.Write(MemoryMarshal.AsBytes(grid.LatentEnergy.AsSpan()));
     }
 
     public static Simulation Load(Stream stream, MaterialTable materials, IEnumerable<ISimSystem>? systems = null)
@@ -67,9 +69,11 @@ public static class Snapshot
                 throw new InvalidDataException($"Material id {id} is '{key}' in the snapshot but '{materials[id].Key}' in the table.");
         }
 
-        var grid = new WorldGrid(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32());
+        var grid = new WorldGrid(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(), materials);
         ReadExactly(reader, MemoryMarshal.AsBytes(grid.Material.AsSpan()));
         ReadExactly(reader, MemoryMarshal.AsBytes(grid.Temperature.AsSpan()));
+        ReadExactly(reader, MemoryMarshal.AsBytes(grid.Mass.AsSpan()));
+        ReadExactly(reader, MemoryMarshal.AsBytes(grid.LatentEnergy.AsSpan()));
 
         var sim = new Simulation(seed, grid, materials, systems) { Tick = tick };
         sim.Rng.State = rngState;

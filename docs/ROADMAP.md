@@ -8,8 +8,8 @@ cover it, including a determinism check.
 | --- | --- | --- | --- |
 | 1 | Grid, materials, seed, ticks, save and replay | Same seed and inputs give identical state after 10,000 ticks | Done |
 | 2 | Heat conduction | A hot stone warms the air beside it within seconds; iron spreads heat faster than wood | Done |
-| 3 | Phase change with latent heat | An ice block melts into water, then boils into steam | Next |
-| 4 | Fluids and gases | A room floods through a door; steam rises and fills the ceiling | |
+| 3 | Phase change with latent heat | An ice block melts into water, then boils into steam | Done |
+| 4 | Fluids and gases | A room floods through a door; steam rises and fills the ceiling | Next |
 | 5 | Combustion and oxygen | Fire spreads through a wooden hut and dies when the air runs out | |
 | 6 | Structure and load | A burning support beam fails and the ceiling collapses | |
 | 7 | Ether field | Arcane charge flows through stone and ruptures an overloaded crystal | |
