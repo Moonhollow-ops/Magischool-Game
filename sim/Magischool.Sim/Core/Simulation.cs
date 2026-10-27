@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Magischool.Sim.Determinism;
 using Magischool.Sim.Materials;
 using Magischool.Sim.Persistence;
@@ -37,6 +38,7 @@ public sealed class Simulation
         Seed = seed;
         Grid = grid;
         Materials = materials;
+        Activity = new ActivityMap(grid.Width, grid.Height, grid.Depth);
         _systems = systems == null ? Array.Empty<ISimSystem>() : new List<ISimSystem>(systems).ToArray();
         Rng = new Pcg32(SeedHash.Derive(seed, "sim"));
     }
@@ -45,6 +47,15 @@ public sealed class Simulation
     public WorldGrid Grid { get; }
     public MaterialTable Materials { get; }
     public IReadOnlyList<ISimSystem> Systems => _systems;
+
+    /// <summary>Which chunks are awake. Part of the world state.</summary>
+    public ActivityMap Activity { get; }
+
+    /// <summary>
+    /// How many threads physics may use. Results are identical for any value:
+    /// every parallel loop writes only its own tiles from the start-of-tick state.
+    /// </summary>
+    public ParallelOptions Parallelism { get; set; } = new();
 
     /// <summary>Number of ticks completed. Tick N's commands apply before tick N's systems run.</summary>
     public long Tick { get; internal set; }

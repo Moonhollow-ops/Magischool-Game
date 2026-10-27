@@ -12,5 +12,6 @@ public static class StandardSystems
     {
         new ThermalSystem(),
         new PhaseSystem(),
+        new ActivitySystem(), // always last: decides what sleeps next tick
     };
 }

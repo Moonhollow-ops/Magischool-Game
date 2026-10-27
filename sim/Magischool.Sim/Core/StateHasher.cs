@@ -24,6 +24,7 @@ internal static class StateHasher
         hash = SeedHash.Hash(MemoryMarshal.AsBytes(grid.Temperature.AsSpan()), hash);
         hash = SeedHash.Hash(MemoryMarshal.AsBytes(grid.Mass.AsSpan()), hash);
         hash = SeedHash.Hash(MemoryMarshal.AsBytes(grid.LatentEnergy.AsSpan()), hash);
+        hash = SeedHash.Hash(MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()), hash);
         return hash;
     }
 }

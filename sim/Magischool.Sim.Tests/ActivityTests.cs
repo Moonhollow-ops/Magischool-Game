@@ -1,0 +1,136 @@
+using System;
+using System.Threading.Tasks;
+using Magischool.Sim.Core;
+using Magischool.Sim.Materials;
+using Magischool.Sim.Persistence;
+using Magischool.Sim.Thermal;
+using Magischool.Sim.WorldGen;
+using Xunit;
+
+namespace Magischool.Sim.Tests;
+
+public class ActivityTests
+{
+    private static readonly MaterialTable Table = BuiltInMaterials.CreateTable();
+    private static readonly ushort Air = Table.Id(BuiltInMaterials.Air);
+    private static readonly ushort Stone = Table.Id(BuiltInMaterials.Stone);
+    private const double Room = BuiltInMaterials.RoomTemperatureK;
+
+    /// <summary>A 4 x 4 x 1 chunk world: stone floor, air above, all at room temperature.</summary>
+    private static Simulation QuietWorld()
+    {
+        var grid = new WorldGrid(64, 64, 8, Table);
+        grid.Fill(Air, Room);
+        for (int y = 0; y < 64; y++)
+        for (int x = 0; x < 64; x++)
+            grid.Set(x, y, 0, Stone, Room);
+        return new Simulation("quiet", grid, Table, StandardSystems.Create());
+    }
+
+    [Fact]
+    public void AQuietWorldFallsAsleep()
+    {
+        var sim = QuietWorld();
+        Assert.Equal(16, sim.Activity.AwakeCount);
+        sim.Step();
+        Assert.Equal(0, sim.Activity.AwakeCount);
+    }
+
+    [Fact]
+    public void HeatWakesOnlyWhereItGoesAndCrossesChunkBorders()
+    {
+        var sim = QuietWorld();
+        sim.Step();
+        sim.Enqueue(new AddHeat(15, 8, 1, 2_000_000)); // last column of chunk 0
+        sim.Step(3_000);
+
+        var grid = sim.Grid;
+        Assert.True(grid.Temperature[grid.Index(16, 8, 1)] > Room + 0.5, "heat did not cross into the next chunk");
+        Assert.False(sim.Activity.IsAwakeAt(60, 60, 1), "a far corner woke up for no reason");
+    }
+
+    [Fact]
+    public void SleepingMatchesTheFullSimulationClosely()
+    {
+        // Same world and inputs, once with sleeping and once fully awake every tick.
+        Simulation Run(bool sleeping)
+        {
+            ISimSystem[] systems = sleeping
+                ? StandardSystems.Create()
+                : new ISimSystem[] { new ThermalSystem(), new PhaseSystem() };
+            var sim = TestRoomGenerator.Create("fidelity", Table, 64, 48, 8, systems);
+            for (int i = 0; i < 3_000; i++)
+            {
+                if (i % 300 == 0) sim.Enqueue(new AddHeat(10 + i / 100, 20, 1, 5_000_000));
+                sim.Step();
+            }
+            return sim;
+        }
+
+        var asleep = Run(sleeping: true);
+        var awake = Run(sleeping: false);
+        double worst = 0;
+        for (int i = 0; i < awake.Grid.Count; i++)
+        {
+            Assert.Equal(awake.Grid.Material[i], asleep.Grid.Material[i]);
+            worst = Math.Max(worst, Math.Abs(awake.Grid.Temperature[i] - asleep.Grid.Temperature[i]));
+        }
+        Assert.True(worst < 0.01, $"worst difference {worst} K");
+        Assert.True(asleep.Activity.AwakeCount < asleep.Activity.Count, "nothing ever slept, so this test proves nothing");
+    }
+
+    [Fact]
+    public void EnergyIsConservedWhileChunksSleepAndWake()
+    {
+        var sim = QuietWorld();
+        sim.Step();
+        double before = EnergyAudit.TotalJoules(sim.Grid);
+        double added = 0;
+        for (int i = 0; i < 4_000; i++)
+        {
+            if (i % 500 == 0)
+            {
+                sim.Enqueue(new AddHeat(5 + i / 100, 40, 1, 1_000_000));
+                added += 1_000_000;
+            }
+            sim.Step();
+        }
+        Assert.Equal(before + added, EnergyAudit.TotalJoules(sim.Grid), (before + added) * 1e-12);
+    }
+
+    [Fact]
+    public void ThreadCountNeverChangesTheResult()
+    {
+        ulong Run(int threads)
+        {
+            var sim = TestRoomGenerator.Create("threads", Table, 64, 48, 8, StandardSystems.Create());
+            sim.Parallelism = new ParallelOptions { MaxDegreeOfParallelism = threads };
+            for (int i = 0; i < 2_000; i++)
+            {
+                if (i % 250 == 0) sim.Enqueue(new AddHeat(20, 10 + i / 250, 1, 3_000_000));
+                sim.Step();
+            }
+            return sim.StateHash();
+        }
+
+        ulong single = Run(1);
+        Assert.Equal(single, Run(4));
+        Assert.Equal(single, Run(-1));
+    }
+
+    [Fact]
+    public void SleepStateSurvivesSaveAndLoad()
+    {
+        var live = QuietWorld();
+        live.Step();
+        live.Enqueue(new AddHeat(30, 30, 1, 5_000_000));
+        live.Step(200);
+        Assert.InRange(live.Activity.AwakeCount, 1, live.Activity.Count - 1);
+
+        var loaded = Snapshot.FromBytes(Snapshot.ToBytes(live), Table, StandardSystems.Create());
+        Assert.Equal(live.Activity.Awake, loaded.Activity.Awake);
+        live.Step(500);
+        loaded.Step(500);
+        Assert.Equal(live.StateHash(), loaded.StateHash());
+    }
+}
