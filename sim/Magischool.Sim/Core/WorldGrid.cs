@@ -64,6 +64,13 @@ public sealed class WorldGrid
     /// <summary>Gas mass in kg per species per tile: <c>GasMass[species][tile]</c>, species as in <see cref="MaterialTable.GasIds"/>.</summary>
     public readonly double[][] GasMass;
 
+    /// <summary>
+    /// Air velocity in m/s through each tile's +x, +y and +z face (a staggered grid: the face
+    /// between tile i and its +x neighbour is <c>AirVelocity[0][i]</c>). Positive is toward +x, +y
+    /// or up. A top-layer tile's +z face opens onto the sky.
+    /// </summary>
+    public readonly double[][] AirVelocity;
+
     public WorldGrid(int width, int height, int depth, MaterialTable materials)
     {
         if (width <= 0 || height <= 0 || depth <= 0)
@@ -84,6 +91,7 @@ public sealed class WorldGrid
         GasMass = new double[materials.GasCount][];
         for (int s = 0; s < GasMass.Length; s++)
             GasMass[s] = new double[Count];
+        AirVelocity = new[] { new double[Count], new double[Count], new double[Count] };
     }
 
     public int Index(int x, int y, int z) => (z * Height + y) * Width + x;
@@ -188,6 +196,8 @@ public sealed class WorldGrid
         Array.Copy(LatentEnergy, copy.LatentEnergy, Count);
         for (int s = 0; s < GasMass.Length; s++)
             Array.Copy(GasMass[s], copy.GasMass[s], Count);
+        for (int a = 0; a < 3; a++)
+            Array.Copy(AirVelocity[a], copy.AirVelocity[a], Count);
         return copy;
     }
 }

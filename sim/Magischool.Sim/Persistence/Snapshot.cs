@@ -16,7 +16,7 @@ namespace Magischool.Sim.Persistence;
 public static class Snapshot
 {
     private const uint Magic = 0x5753474D; // "MGSW"
-    public const ushort FormatVersion = 5;
+    public const ushort FormatVersion = 6;
 
     public static void Save(Simulation sim, Stream stream)
     {
@@ -49,6 +49,8 @@ public static class Snapshot
             writer.Write(sim.Materials.GasIds[s]);
             writer.Write(MemoryMarshal.AsBytes(grid.GasMass[s].AsSpan()));
         }
+        foreach (var velocity in grid.AirVelocity)
+            writer.Write(MemoryMarshal.AsBytes(velocity.AsSpan()));
         writer.Write(MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()));
     }
 
@@ -90,6 +92,9 @@ public static class Snapshot
             if (species < 0) throw new InvalidDataException($"Snapshot gas id {gasId} is not a gas in the table.");
             ReadExactly(reader, MemoryMarshal.AsBytes(grid.GasMass[species].AsSpan()));
         }
+
+        foreach (var velocity in grid.AirVelocity)
+            ReadExactly(reader, MemoryMarshal.AsBytes(velocity.AsSpan()));
 
         var sim = new Simulation(seed, grid, materials, systems) { Tick = tick };
         ReadExactly(reader, MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()));

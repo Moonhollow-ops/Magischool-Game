@@ -10,8 +10,8 @@ cover it, including a determinism check.
 | 2 | Heat conduction | A hot stone warms the air beside it within seconds; iron spreads heat faster than wood | Done |
 | 3 | Phase change with latent heat | An ice block melts into water, then boils into steam | Done |
 | 4 | Fluids and gases | A room floods through a door; steam rises and fills the ceiling | Done (first pass, see below) |
-| 4b | Air currents | Warm air and smoke pool under a ceiling and spill out of a doorway; a draught through a window | Next |
-| 5 | Combustion and oxygen | Fire spreads through a wooden hut and dies when the air runs out | |
+| 4b | Air currents | Warm air and smoke pool under a ceiling and spill out of a doorway; a draught through a window | Done |
+| 5 | Combustion and oxygen | Fire spreads through a wooden hut and dies when the air runs out | Next |
 | 6 | Structure and load | A burning support beam fails and the ceiling collapses | |
 | 7 | Ether field | Arcane charge flows through stone and ruptures an overloaded crystal | |
 | 8 | Spells as field inputs | Spells only add heat, force, charge or matter; the frozen pipe bursts with no special code | |
@@ -23,13 +23,13 @@ cover it, including a determinism check.
 Perception (10) was added because magic must stay secret: being seen, heard,
 or leaving evidence is a core consequence of using magic.
 
-Layer 4's first pass moves liquids and gases with conserved mass and energy:
-water falls, pools, floods through doorways and finds its level; gas follows
-pressure and its own weight, warm and light gas rises by mixing upward, and an
-open sky lets heat and steam leave the world. What it can't do yet is carry
-momentum. Gas has no velocity, so there are no currents: warm air mixes upward
-instead of pooling as a layer under the ceiling, and steam fills a room evenly
-instead of from the top down. Layer 4b adds a velocity field for air with a
-pressure solve each tick (the standard incompressible-flow method), which gives
-plumes, layers and draughts. It comes before combustion because smoke filling
-a room from the ceiling down is how fires kill.
+Layer 4 moves liquids and gases with conserved mass and energy: water falls,
+pools, floods through doorways and finds its level; gas follows pressure and
+its own weight; an open sky lets heat and steam leave the world. Layer 4b
+gives air a velocity on every tile face, driven by buoyancy, slowed by drag,
+and balanced each tick by a pressure solve, so a stove sends up a plume, warm
+air collects under the ceiling and spreads down, and warm air spills out of
+the top of a doorway while cool air comes in along the floor. Velocity isn't
+yet carried along by the flow itself (no momentum advection), so currents
+stop soon after whatever drives them stops; wind and coasting draughts come
+with weather.

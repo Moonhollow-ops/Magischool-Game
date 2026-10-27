@@ -17,10 +17,11 @@ namespace Magischool.Sim.Thermal;
 /// <para>
 /// Fluids also convect, which at tile scale carries far more heat than
 /// conduction (still air conducts so poorly that a hot stone would take days
-/// to warm the air beside it). Moving air and water (layer 4) carry heat
-/// between fluid tiles, but the thin boundary layer against a surface is far
-/// smaller than a tile, so a fluid's side of a face still uses whichever is
-/// lower: its conduction resistance or a natural-convection film resistance 1 / h.
+/// to warm the air beside it). The thin boundary layer against a surface is
+/// far smaller than a tile, so a fluid's side of a face to a solid or a
+/// different fluid uses whichever is lower: its conduction resistance or a
+/// natural-convection film resistance 1 / h. Between two tiles of open air,
+/// the air currents (layer 4b) do the carrying, so only conduction applies.
 /// </para>
 /// <para>
 /// Not modelled yet: radiation (needs line of sight; planned with fire).
@@ -43,6 +44,8 @@ public sealed class ThermalSystem : ISimSystem
 
     private MaterialTable? _preparedFor;
     private double[] _halfResistance = Array.Empty<double>();
+    private double[] _halfConduction = Array.Empty<double>();
+    private bool[] _isGas = Array.Empty<bool>();
     private double[] _capacity = Array.Empty<double>();
     private double[] _delta = Array.Empty<double>();
 
@@ -146,7 +149,9 @@ public sealed class ThermalSystem : ISimSystem
         double ca = _capacity[a], cb = _capacity[b];
         if (ca <= 0.0 || cb <= 0.0) return 0.0;
 
-        double conductance = 1.0 / (_halfResistance[ma] + _halfResistance[mb]);
+        double conductance = _isGas[ma] && _isGas[mb]
+            ? 1.0 / (_halfConduction[ma] + _halfConduction[mb])
+            : 1.0 / (_halfResistance[ma] + _halfResistance[mb]);
         double joules = conductance * dT * Simulation.SecondsPerTick;
 
         // Never move more than this face's share of what would bring the pair to equilibrium.
@@ -165,9 +170,14 @@ public sealed class ThermalSystem : ISimSystem
         if (ReferenceEquals(_preparedFor, sim.Materials)) return;
         var table = sim.Materials;
         _halfResistance = new double[table.Count];
+        _halfConduction = new double[table.Count];
+        _isGas = new bool[table.Count];
         for (ushort id = 0; id < table.Count; id++)
         {
-            _halfResistance[id] = HalfResistance(table[id]);
+            var def = table[id];
+            _halfResistance[id] = HalfResistance(def);
+            _halfConduction[id] = def.ThermalConductivity > 0f ? HalfTileM / (def.ThermalConductivity * FaceAreaM2) : double.PositiveInfinity;
+            _isGas[id] = def.Phase == Phase.Gas;
         }
         _preparedFor = table;
     }
