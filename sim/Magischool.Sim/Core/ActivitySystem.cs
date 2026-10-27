@@ -7,9 +7,11 @@ namespace Magischool.Sim.Core;
 ///
 /// An awake chunk falls asleep when, across every face inside it and on its
 /// border, temperatures differ by no more than <see cref="SleepThresholdK"/>,
-/// and no tile in it is part-way through or due for a phase change.
+/// no tile in it is part-way through or due for a phase change, and nothing
+/// moved in it this tick (see <see cref="ActivityMap.Stirred"/>).
 /// A sleeping chunk wakes when an awake neighbour differs from it by more than
-/// the threshold across their shared border, or when a command touches it.
+/// the threshold across their shared border, when fluid wants to cross into
+/// it, or when a command touches it.
 ///
 /// Sleeping never creates or destroys energy (faces to a sleeping chunk carry
 /// nothing from either side). The fidelity cost is that differences smaller
@@ -39,7 +41,7 @@ public sealed class ActivitySystem : ISimSystem
         var chunks = activity.AwakeChunks();
         ChunkLoop.Run(sim, chunks, chunk =>
         {
-            _quiet[chunk] = IsQuiet(grid, rules, activity, chunk);
+            _quiet[chunk] = !activity.Stirred[chunk] && IsQuiet(grid, rules, activity, chunk);
         });
 
         // Sleeping neighbours that an awake, changing chunk now pushes on must wake.
@@ -51,8 +53,9 @@ public sealed class ActivitySystem : ISimSystem
             if (_quiet[chunk]) activity.Awake[chunk] = false;
         for (int c = 0; c < activity.Count; c++)
         {
-            if (_wake[c]) activity.Awake[c] = true;
+            if (_wake[c] || activity.Stirred[c]) activity.Awake[c] = true;
             _wake[c] = false;
+            activity.Stirred[c] = false;
             _quiet[c] = false;
         }
     }
@@ -66,7 +69,7 @@ public sealed class ActivitySystem : ISimSystem
         for (int x = x0; x < x1; x++)
         {
             int i = grid.Index(x, y, z);
-            if (!rules.IsSettled(grid.Material[i], t[i], grid.LatentEnergy[i])) return false;
+            if (!rules.IsSettled(grid, i)) return false;
             // Each face is checked from its lower side, plus the chunk's lower borders.
             if (x + 1 < grid.Width && System.Math.Abs(t[i] - t[i + 1]) > SleepThresholdK) return false;
             if (y + 1 < grid.Height && System.Math.Abs(t[i] - t[i + grid.Width]) > SleepThresholdK) return false;

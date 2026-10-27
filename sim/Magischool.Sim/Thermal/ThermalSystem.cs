@@ -17,13 +17,14 @@ namespace Magischool.Sim.Thermal;
 /// <para>
 /// Fluids also convect, which at tile scale carries far more heat than
 /// conduction (still air conducts so poorly that a hot stone would take days
-/// to warm the air beside it). Until real fluid flow arrives in layer 4, a
-/// fluid's side of a face uses whichever is lower: its conduction resistance
-/// or a natural-convection film resistance 1 / h.
+/// to warm the air beside it). Moving air and water (layer 4) carry heat
+/// between fluid tiles, but the thin boundary layer against a surface is far
+/// smaller than a tile, so a fluid's side of a face still uses whichever is
+/// lower: its conduction resistance or a natural-convection film resistance 1 / h.
 /// </para>
 /// <para>
-/// Not modelled yet: radiation (needs line of sight; planned with fire) and
-/// heat carried by moving fluid (layer 4). World edges are insulated.
+/// Not modelled yet: radiation (needs line of sight; planned with fire).
+/// World edges are insulated.
 /// </para>
 /// </summary>
 public sealed class ThermalSystem : ISimSystem
@@ -42,8 +43,7 @@ public sealed class ThermalSystem : ISimSystem
 
     private MaterialTable? _preparedFor;
     private double[] _halfResistance = Array.Empty<double>();
-    private double[] _specificHeat = Array.Empty<double>();
-    private double[] _mass = Array.Empty<double>();
+    private double[] _capacity = Array.Empty<double>();
     private double[] _delta = Array.Empty<double>();
 
     public string Name => "thermal";
@@ -74,7 +74,19 @@ public sealed class ThermalSystem : ISimSystem
         var chunks = activity.AwakeChunks();
         double[] temperature = grid.Temperature;
         ushort[] material = grid.Material;
-        _mass = grid.Mass;
+
+        // Pass 0: heat capacity of every awake tile (condensed contents plus gas).
+        ChunkLoop.Run(sim, chunks, chunk =>
+        {
+            var (x0, y0, z0, x1, y1, z1) = activity.Bounds(chunk);
+            for (int z = z0; z < z1; z++)
+            for (int y = y0; y < y1; y++)
+            for (int x = x0; x < x1; x++)
+            {
+                int i = grid.Index(x, y, z);
+                _capacity[i] = grid.HeatCapacity(i);
+            }
+        });
 
         // Pass 1: each tile sums the flow across its own six faces from the start-of-tick state.
         // A face is computed once from each side; the two results are exact negatives (every
@@ -110,7 +122,7 @@ public sealed class ThermalSystem : ISimSystem
                 int i = grid.Index(x, y, z);
                 double delta = _delta[i];
                 if (delta == 0.0) continue;
-                double capacity = _mass[i] * _specificHeat[material[i]];
+                double capacity = _capacity[i];
                 if (capacity > 0.0) temperature[i] += delta / capacity;
             }
         });
@@ -131,7 +143,7 @@ public sealed class ThermalSystem : ISimSystem
         if (dT == 0.0) return 0.0;
 
         ushort ma = material[a], mb = material[b];
-        double ca = _mass[a] * _specificHeat[ma], cb = _mass[b] * _specificHeat[mb];
+        double ca = _capacity[a], cb = _capacity[b];
         if (ca <= 0.0 || cb <= 0.0) return 0.0;
 
         double conductance = 1.0 / (_halfResistance[ma] + _halfResistance[mb]);
@@ -145,16 +157,17 @@ public sealed class ThermalSystem : ISimSystem
     private void Prepare(Simulation sim)
     {
         if (_delta.Length != sim.Grid.Count)
+        {
             _delta = new double[sim.Grid.Count];
+            _capacity = new double[sim.Grid.Count];
+        }
 
         if (ReferenceEquals(_preparedFor, sim.Materials)) return;
         var table = sim.Materials;
         _halfResistance = new double[table.Count];
-        _specificHeat = new double[table.Count];
         for (ushort id = 0; id < table.Count; id++)
         {
             _halfResistance[id] = HalfResistance(table[id]);
-            _specificHeat[id] = table[id].SpecificHeat;
         }
         _preparedFor = table;
     }

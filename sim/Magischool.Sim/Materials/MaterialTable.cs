@@ -13,10 +13,18 @@ public sealed class MaterialTable
     private readonly MaterialDef[] _defs;
     private readonly Dictionary<string, ushort> _idsByKey;
 
+    /// <summary>The id stored in a tile's condensed slot when it holds no solid or liquid.</summary>
+    public const ushort Empty = 0;
+
+    private readonly ushort[] _gasIds;
+    private readonly int[] _gasIndex;
+
     public MaterialTable(IReadOnlyList<MaterialDef> defs)
     {
         if (defs.Count == 0 || defs.Count > ushort.MaxValue)
             throw new ArgumentException("A table needs between 1 and 65535 materials.", nameof(defs));
+        if (defs[0].Phase != Phase.Gas)
+            throw new ArgumentException("Material id 0 must be a gas (it marks an empty condensed slot).", nameof(defs));
 
         _defs = new MaterialDef[defs.Count];
         _idsByKey = new Dictionary<string, ushort>(defs.Count, StringComparer.Ordinal);
@@ -35,6 +43,23 @@ public sealed class MaterialTable
             CheckLink(def, def.BoilsInto);
             CheckLink(def, def.CondensesInto);
         }
+
+        var gasIds = new List<ushort>();
+        _gasIndex = new int[_defs.Length];
+        for (ushort id = 0; id < _defs.Length; id++)
+        {
+            var def = _defs[id];
+            _gasIndex[id] = -1;
+            if (def.Phase == Phase.Gas)
+            {
+                if (def.MolarMass <= 0f) throw new ArgumentException($"Gas '{def.Key}' needs a molar mass.");
+                _gasIndex[id] = gasIds.Count;
+                gasIds.Add(id);
+            }
+            else if (def.Phase == Phase.Liquid && def.Viscosity <= 0f)
+                throw new ArgumentException($"Liquid '{def.Key}' needs a viscosity.");
+        }
+        _gasIds = gasIds.ToArray();
 
         foreach (var def in _defs)
         {
@@ -57,6 +82,14 @@ public sealed class MaterialTable
     public bool TryGetId(string key, out ushort id) => _idsByKey.TryGetValue(key, out id);
 
     public IEnumerable<MaterialDef> All => _defs;
+
+    /// <summary>Material ids of every gas, in id order. A gas's position here is its species index.</summary>
+    public IReadOnlyList<ushort> GasIds => _gasIds;
+
+    public int GasCount => _gasIds.Length;
+
+    /// <summary>Species index of a gas material, or -1 if it isn't a gas.</summary>
+    public int GasIndexOf(ushort id) => _gasIndex[id];
 
     /// <summary>
     /// The two sides of a phase change must agree on the transition, or energy

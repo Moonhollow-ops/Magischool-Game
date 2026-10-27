@@ -30,6 +30,10 @@ public sealed record MaterialDef
     public required float SpecificHeat { get; init; }
     /// <summary>W/(m·K)</summary>
     public required float ThermalConductivity { get; init; }
+    /// <summary>kg/mol. Gases only: sets their pressure through the ideal gas law.</summary>
+    public float MolarMass { get; init; }
+    /// <summary>Pa·s. Liquids only: how readily they flow (water 0.001, magma ~100).</summary>
+    public float Viscosity { get; init; }
     /// <summary>MPa. Zero for fluids.</summary>
     public float TensileStrength { get; init; }
     /// <summary>K. Solid becomes liquid at or above this.</summary>

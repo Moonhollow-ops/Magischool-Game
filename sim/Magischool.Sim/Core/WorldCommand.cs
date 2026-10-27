@@ -27,7 +27,11 @@ public abstract record WorldCommand
     }
 }
 
-/// <summary>Fill one tile with a material. Temperature is kept, so a placed block takes on its surroundings' heat.</summary>
+/// <summary>
+/// Fill one tile with a material, replacing everything in it (a debug and building
+/// tool: it creates and destroys mass). Temperature is kept, so a placed block
+/// takes on its surroundings' heat.
+/// </summary>
 public sealed record SetMaterial(int X, int Y, int Z, ushort Material) : WorldCommand
 {
     internal const byte TagValue = 1;
@@ -40,7 +44,7 @@ public sealed record SetMaterial(int X, int Y, int Z, ushort Material) : WorldCo
             throw new ArgumentOutOfRangeException(nameof(Material), $"No material with id {Material}.");
         int i = sim.Grid.Index(X, Y, Z);
         sim.Activity.WakeAround(X, Y, Z);
-        sim.Grid.SetAt(i, Material, sim.Grid.Temperature[i], sim.Materials[Material].FullTileMass);
+        sim.Grid.Place(i, Material, sim.Grid.Temperature[i]);
     }
 
     internal override void Write(BinaryWriter writer)

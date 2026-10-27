@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using Godot;
 using Magischool.Sim.Core;
+using Magischool.Sim.Fluids;
 using Magischool.Sim.Materials;
 using Magischool.Sim.Persistence;
 using Magischool.Sim.WorldGen;
@@ -15,7 +16,7 @@ namespace Magischool.Game;
 /// Space: wait 1 tick · Enter: wait 1 s · W: wait 1 min · H: wait 10 min · Q/E: z down/up
 /// Tab: heat overlay · 1-9: pick material · Left click: place it
 /// Right click: set tile to 1000 K (Shift: 100 K), a debug tool that ignores conservation
-/// F5: save · F9: load · R: new seed
+/// F5: save · F9: load · R: new seed · Hover a tile to read its contents
 /// </summary>
 public partial class WorldView : Node2D
 {
@@ -31,6 +32,7 @@ public partial class WorldView : Node2D
     private ushort _brush = 1;
     private bool _heatOverlay;
     private string _status = "";
+    private int _hoverX = -1, _hoverY = -1;
 
     public override void _Ready()
     {
@@ -58,6 +60,13 @@ public partial class WorldView : Node2D
             HandleKey(key);
         else if (@event is InputEventMouseButton { Pressed: true } click)
             HandleClick(click);
+        else if (@event is InputEventMouseMotion motion)
+        {
+            Vector2 local = ToLocal(motion.Position);
+            _hoverX = (int)MathF.Floor(local.X / TileSize);
+            _hoverY = (int)MathF.Floor(local.Y / TileSize);
+            QueueRedraw();
+        }
     }
 
     private void HandleKey(InputEventKey key)
@@ -137,7 +146,7 @@ public partial class WorldView : Node2D
         for (int x = 0; x < grid.Width; x++)
         {
             int i = grid.Index(x, y, _z);
-            var color = _heatOverlay ? HeatColor(grid.Temperature[i]) : MaterialColor(_materials[grid.Material[i]]);
+            var color = _heatOverlay ? HeatColor(grid.Temperature[i]) : MaterialColor(_materials[grid.DisplayMaterial(i)]);
             DrawRect(new Rect2(x * TileSize, y * TileSize, TileSize - 1, TileSize - 1), color);
         }
 
@@ -152,6 +161,25 @@ public partial class WorldView : Node2D
             fontSize: 13, modulate: new Color(0.7f, 0.7f, 0.7f));
         if (_status.Length > 0)
             DrawString(font, new Vector2(4, hudY + 42), _status, fontSize: 13, modulate: new Color(1f, 0.85f, 0.4f));
+        if (grid.InBounds(_hoverX, _hoverY, _z))
+            DrawString(font, new Vector2(4, hudY + 62), Describe(grid, grid.Index(_hoverX, _hoverY, _z)), fontSize: 13);
+    }
+
+    /// <summary>One line on what a tile holds: its solid or liquid, its gases, temperature and pressure.</summary>
+    private string Describe(WorldGrid grid, int i)
+    {
+        var (x, y, z) = grid.Coordinates(i);
+        string held = grid.HasCondensed(i)
+            ? $"{_materials[grid.Material[i]].Name} {grid.Mass[i]:0.###} kg ({grid.FillFraction(i):P0} full)"
+            : "no solid or liquid";
+        var gases = new System.Text.StringBuilder();
+        for (int s = 0; s < _materials.GasCount; s++)
+        {
+            double m = grid.GasMass[s][i];
+            if (m > 0) gases.Append($", {_materials[_materials.GasIds[s]].Name} {m * 1000:0.##} g");
+        }
+        double celsius = grid.Temperature[i] - 273.15;
+        return $"({x},{y},{z})  {held}{gases}  {celsius:0.0} °C  {FluidSystem.PressureAt(grid, i) / 1000:0.###} kPa";
     }
 
     private static Color MaterialColor(MaterialDef def) =>

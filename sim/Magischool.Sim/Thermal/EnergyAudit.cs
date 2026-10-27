@@ -9,22 +9,40 @@ namespace Magischool.Sim.Thermal;
 /// at any time. A tile holds sensible heat (mass × specific heat × T), any
 /// latent energy it is part-way through absorbing, and the latent heat its
 /// material already contains relative to its coldest phase (water carries the
-/// heat that melted it; steam also carries the heat that boiled it).
+/// heat that melted it; steam also carries the heat that boiled it). Gases
+/// count the same way as condensed contents.
 /// </summary>
 public static class EnergyAudit
 {
     public static double TotalJoules(WorldGrid grid)
     {
-        double[] offsets = PhaseOffsetsPerKg(grid.Materials);
         double total = 0.0;
         for (int i = 0; i < grid.Count; i++)
+            total += TileJoules(grid, i);
+        return total;
+    }
+
+    /// <summary>Internal energy of one tile: its condensed contents, its gases and any latent energy in progress.</summary>
+    public static double TileJoules(WorldGrid grid, int i)
+    {
+        double[] offsets = OffsetsFor(grid.Materials);
+        var table = grid.Materials;
+        double t = grid.Temperature[i];
+        ushort m = grid.Material[i];
+        double total = grid.Mass[i] * (table[m].SpecificHeat * t + offsets[m]) + grid.LatentEnergy[i];
+        var gasIds = table.GasIds;
+        for (int s = 0; s < gasIds.Count; s++)
         {
-            ushort m = grid.Material[i];
-            total += grid.Mass[i] * (grid.Materials[m].SpecificHeat * grid.Temperature[i] + offsets[m])
-                     + grid.LatentEnergy[i];
+            double gas = grid.GasMass[s][i];
+            if (gas != 0.0) total += gas * (table[gasIds[s]].SpecificHeat * t + offsets[gasIds[s]]);
         }
         return total;
     }
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<MaterialTable, double[]> Cache = new();
+
+    /// <summary>Cached <see cref="PhaseOffsetsPerKg"/> for a table.</summary>
+    public static double[] OffsetsFor(MaterialTable table) => Cache.GetValue(table, PhaseOffsetsPerKg);
 
     /// <summary>
     /// Energy per kg each material holds above its coldest linked phase,

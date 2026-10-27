@@ -1,13 +1,15 @@
 using System;
 using Magischool.Sim.Core;
 using Magischool.Sim.Determinism;
+using Magischool.Sim.Fluids;
 using Magischool.Sim.Materials;
 
 namespace Magischool.Sim.WorldGen;
 
 /// <summary>
 /// A small seeded sandbox for testing physics layers: solid ground, a walled
-/// stone room with a wooden door, a lead water pipe, and scattered props.
+/// stone room with a wooden door, a capped lead water pipe, scattered props,
+/// a pond, and still air.
 /// Layout varies with the seed; the same seed always gives the same room.
 /// </summary>
 public static class TestRoomGenerator
@@ -65,12 +67,13 @@ public static class TestRoomGenerator
         int doorX = rng.NextInt(x0 + 2, x1 - 1);
         grid.Set(doorX, y1, FloorZ, wood, room);
 
-        // A lead pipe full of water along one inner wall: lead, water, lead.
+        // A capped lead pipe full of water along one inner wall: lead, water, lead.
         int pipeY = y0 + 2;
-        for (int x = x0 + 2; x <= x1 - 2; x++)
+        for (int x = x0 + 1; x <= x1 - 1; x++)
         {
+            bool cap = x == x0 + 1 || x == x1 - 1;
             grid.Set(x, pipeY - 1, FloorZ, lead, room);
-            grid.Set(x, pipeY, FloorZ, water, room);
+            grid.Set(x, pipeY, FloorZ, cap ? lead : water, room);
             grid.Set(x, pipeY + 1, FloorZ, lead, room);
         }
 
@@ -87,6 +90,7 @@ public static class TestRoomGenerator
         for (int x = pondX; x < pondX + 4; x++)
             grid.Set(x, y, GroundZ, water, 283.15f);
 
+        Atmosphere.Balance(grid, air, room);
         return grid;
     }
 

@@ -40,6 +40,7 @@ Viewer: open `game/project.godot` in Godot 4.7 .NET and press Play.
 | Right click | Set a tile to 1000 K (Shift: 100 K). Debug only: ignores energy conservation |
 | F5 / F9 | Save / load |
 | R | New random seed |
+| Hover | Read a tile: its solid or liquid, gases, temperature and pressure |
 
 ## Simulation rules
 
