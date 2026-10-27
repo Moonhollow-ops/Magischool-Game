@@ -1,6 +1,8 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Magischool.Sim.Core;
+using Magischool.Sim.Fluids;
 using Magischool.Sim.Materials;
 using Magischool.Sim.Persistence;
 using Magischool.Sim.Thermal;
@@ -17,14 +19,15 @@ public class ActivityTests
     private const double Room = BuiltInMaterials.RoomTemperatureK;
 
     /// <summary>A 4 x 4 x 1 chunk world: stone floor, air above, all at room temperature.</summary>
-    private static Simulation QuietWorld()
+    private static Simulation QuietWorld(params ISimSystem[] systems)
     {
         var grid = new WorldGrid(64, 64, 8, Table);
         grid.Fill(Air, Room);
         for (int y = 0; y < 64; y++)
         for (int x = 0; x < 64; x++)
             grid.Set(x, y, 0, Stone, Room);
-        return new Simulation("quiet", grid, Table, StandardSystems.Create());
+        Atmosphere.Balance(grid, Air, Room);
+        return new Simulation("quiet", grid, Table, systems.Length > 0 ? systems : StandardSystems.Create());
     }
 
     [Fact]
@@ -41,7 +44,7 @@ public class ActivityTests
     {
         var sim = QuietWorld();
         sim.Step();
-        sim.Enqueue(new AddHeat(15, 8, 1, 2_000_000)); // last column of chunk 0
+        sim.Enqueue(new AddHeat(15, 8, 1, 200_000)); // air in the last column of chunk 0
         sim.Step(3_000);
 
         var grid = sim.Grid;
@@ -53,16 +56,18 @@ public class ActivityTests
     public void SleepingMatchesTheFullSimulationClosely()
     {
         // Same world and inputs, once with sleeping and once fully awake every tick.
+        long sleptChunkTicks = 0;
         Simulation Run(bool sleeping)
         {
             ISimSystem[] systems = sleeping
                 ? StandardSystems.Create()
-                : new ISimSystem[] { new ThermalSystem(), new PhaseSystem() };
+                : new ISimSystem[] { new ThermalSystem(), new PhaseSystem(), new FluidSystem() };
             var sim = TestRoomGenerator.Create("fidelity", Table, 64, 48, 8, systems);
             for (int i = 0; i < 3_000; i++)
             {
-                if (i % 300 == 0) sim.Enqueue(new AddHeat(10 + i / 100, 20, 1, 5_000_000));
+                if (i % 300 == 0) sim.Enqueue(new AddHeat(10 + i / 100, 20, 0, 5_000_000)); // into the ground
                 sim.Step();
+                if (sleeping) sleptChunkTicks += sim.Activity.Count - sim.Activity.AwakeCount;
             }
             return sim;
         }
@@ -76,15 +81,17 @@ public class ActivityTests
             worst = Math.Max(worst, Math.Abs(awake.Grid.Temperature[i] - asleep.Grid.Temperature[i]));
         }
         Assert.True(worst < 0.01, $"worst difference {worst} K");
-        Assert.True(asleep.Activity.AwakeCount < asleep.Activity.Count, "nothing ever slept, so this test proves nothing");
+        Assert.True(sleptChunkTicks > 0, "nothing ever slept, so this test proves nothing");
     }
 
     [Fact]
     public void EnergyIsConservedWhileChunksSleepAndWake()
     {
-        var sim = QuietWorld();
+        var systems = StandardSystems.Create();
+        var fluid = systems.OfType<FluidSystem>().Single();
+        var sim = QuietWorld(systems);
         sim.Step();
-        double before = EnergyAudit.TotalJoules(sim.Grid);
+        double before = EnergyAudit.TotalJoules(sim.Grid) + fluid.SkyEnergyOutJ;
         double added = 0;
         for (int i = 0; i < 4_000; i++)
         {
@@ -95,7 +102,8 @@ public class ActivityTests
             }
             sim.Step();
         }
-        Assert.Equal(before + added, EnergyAudit.TotalJoules(sim.Grid), (before + added) * 1e-12);
+        // Whatever warm air rose out through the open sky still counts.
+        Assert.Equal(before + added, EnergyAudit.TotalJoules(sim.Grid) + fluid.SkyEnergyOutJ, (before + added) * 1e-12);
     }
 
     [Fact]
@@ -123,7 +131,7 @@ public class ActivityTests
     {
         var live = QuietWorld();
         live.Step();
-        live.Enqueue(new AddHeat(30, 30, 1, 5_000_000));
+        live.Enqueue(new AddHeat(30, 30, 0, 1_000_000)); // into the stone floor
         live.Step(200);
         Assert.InRange(live.Activity.AwakeCount, 1, live.Activity.Count - 1);
 

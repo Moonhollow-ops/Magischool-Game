@@ -57,7 +57,7 @@ for (int y = 0; y < grid.Height; y++)
     for (int x = 0; x < grid.Width; x++)
     {
         int i = grid.Index(x, y, z);
-        text.Append(heat ? HeatGlyph(grid.Temperature[i]) : materials[grid.Material[i]].Glyph);
+        text.Append(heat ? HeatGlyph(grid.Temperature[i]) : materials[grid.DisplayMaterial(i)].Glyph);
     }
     text.AppendLine();
 }

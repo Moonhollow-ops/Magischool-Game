@@ -26,7 +26,7 @@ public class PhaseTests
     {
         var grid = new WorldGrid(1, 1, 1, Table);
         grid.Fill(material, temperatureK);
-        return new Simulation("phase-test", grid, Table, StandardSystems.Create());
+        return new Simulation("phase-test", grid, Table, StandardSystems.Create(openSky: false));
     }
 
     [Fact]
@@ -70,22 +70,26 @@ public class PhaseTests
     {
         // The roadmap's test scene: an ice block melts into water, then boils into steam.
         var sim = SingleTile(Ice, 263.15);
-        double m = sim.Grid.Mass[0];
+        var grid = sim.Grid;
+        double m = grid.Mass[0];
+        int steam = Table.GasIndexOf(Steam);
         const double joulesPerTick = 1_000_000; // a steady 10 MW
 
-        var firstTickAs = new Dictionary<ushort, long>();
+        long firstWater = -1, firstAllSteam = -1;
         long meltPlateauTicks = 0, boilPlateauTicks = 0;
-        while (sim.Grid.Material[0] != Steam || sim.Grid.Temperature[0] < Boil + 10)
+        while (grid.HasCondensed(0) || grid.Temperature[0] < Boil + 10)
         {
             sim.Enqueue(new AddHeat(0, 0, 0, joulesPerTick));
             sim.Step();
-            firstTickAs.TryAdd(sim.Grid.Material[0], sim.Tick);
-            if (sim.Grid.LatentEnergy[0] > 0 && sim.Grid.Material[0] == Ice) meltPlateauTicks++;
-            if (sim.Grid.LatentEnergy[0] > 0 && sim.Grid.Material[0] == Water) boilPlateauTicks++;
+            if (firstWater < 0 && grid.Material[0] == Water) firstWater = sim.Tick;
+            if (firstAllSteam < 0 && !grid.HasCondensed(0)) firstAllSteam = sim.Tick;
+            if (grid.LatentEnergy[0] > 0 && grid.Material[0] == Ice) meltPlateauTicks++;
+            if (grid.Material[0] == Water && grid.Temperature[0] == Boil) boilPlateauTicks++;
             Assert.True(sim.Tick < 10_000, "never finished boiling");
         }
 
-        Assert.True(firstTickAs[Ice] < firstTickAs[Water] && firstTickAs[Water] < firstTickAs[Steam]);
+        Assert.True(firstWater > 0 && firstWater < firstAllSteam);
+        Assert.Equal(m, grid.GasMass[steam][0], 9);
         // Plateau lengths follow from latent heat × mass ÷ power, to within a tick.
         Assert.InRange(meltPlateauTicks, 334_000 * m / joulesPerTick - 1, 334_000 * m / joulesPerTick + 1);
         Assert.InRange(boilPlateauTicks, 2_257_000 * m / joulesPerTick - 1, 2_257_000 * m / joulesPerTick + 1);
@@ -95,17 +99,22 @@ public class PhaseTests
     public void EnergyRoundTripsFromIceToSteamAndBack()
     {
         var sim = SingleTile(Ice, 263.15);
+        double m = sim.Grid.Mass[0];
+        int steam = Table.GasIndexOf(Steam);
         double before = EnergyAudit.TotalJoules(sim.Grid);
         const double joules = 3e9;
 
         sim.Enqueue(new AddHeat(0, 0, 0, joules));
         sim.Step();
-        Assert.Equal(Steam, sim.Grid.Material[0]);
+        Assert.False(sim.Grid.HasCondensed(0));
+        Assert.Equal(m, sim.Grid.GasMass[steam][0], 9);
         Assert.Equal(before + joules, EnergyAudit.TotalJoules(sim.Grid), 1e-3);
 
         sim.Enqueue(new AddHeat(0, 0, 0, -joules));
         sim.Step();
         Assert.Equal(Ice, sim.Grid.Material[0]);
+        Assert.Equal(m, sim.Grid.Mass[0], 9);
+        Assert.Equal(0.0, sim.Grid.GasMass[steam][0]);
         Assert.Equal(263.15, sim.Grid.Temperature[0], 6);
         Assert.Equal(before, EnergyAudit.TotalJoules(sim.Grid), 1e-3);
     }
@@ -134,7 +143,7 @@ public class PhaseTests
         grid.Fill(Air, BuiltInMaterials.RoomTemperatureK);
         grid.Set(0, 0, 0, Iron, 1700);
         grid.Set(1, 0, 0, Lead, 590);
-        var sim = new Simulation("lead", grid, Table, StandardSystems.Create());
+        var sim = new Simulation("lead", grid, Table, StandardSystems.Create(openSky: false));
 
         double before = EnergyAudit.TotalJoules(grid);
         bool melted = false;
@@ -151,7 +160,7 @@ public class PhaseTests
     [Fact]
     public void TestRoomConservesEnergyWithPhaseChanges()
     {
-        var sim = TestRoomGenerator.Create("phase-room", Table, systems: StandardSystems.Create());
+        var sim = TestRoomGenerator.Create("phase-room", Table, systems: StandardSystems.Create(openSky: false));
         var grid = sim.Grid;
         // Melting a full cubic metre of ice in a warm room takes hours, so start the ice
         // 99.9% of the way through melting and the floor air hot, and watch it finish.

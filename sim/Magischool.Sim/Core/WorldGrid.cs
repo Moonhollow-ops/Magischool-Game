@@ -6,14 +6,21 @@ namespace Magischool.Sim.Core;
 /// <summary>
 /// The world as flat per-property arrays (structure of arrays), indexed by
 /// <c>(z * Height + y) * Width + x</c>. One tile is a cube
-/// <see cref="TileSizeM"/> on each side (half a metre).
-/// z = 0 is the lowest layer.
+/// <see cref="TileSizeM"/> on each side (half a metre). z = 0 is the lowest layer.
 ///
-/// Each tile holds one material with an explicit mass. A tile filled exactly
-/// to its material's density has <see cref="FillFraction"/> 1. Less than 1
-/// means part of the tile is empty (melted ice is 91.7% as heavy as the water
-/// that would fill the tile); more than 1 means the material is squeezed in under pressure
-/// (freezing water expands), which the structure layer turns into stress.
+/// <para>
+/// A tile has two kinds of contents sharing one temperature:
+/// a <b>condensed slot</b> holding at most one solid or liquid with an exact
+/// mass (<see cref="Material"/>, <see cref="Mass"/>; <see cref="MaterialTable.Empty"/>
+/// when there is none), and a <b>gas mixture</b> filling whatever volume the
+/// condensed contents leave free (<see cref="GasMass"/>, one array per gas).
+/// </para>
+/// <para>
+/// A condensed slot filled exactly to its material's density has
+/// <see cref="FillFraction"/> 1. Less means room for gas (a puddle); more means
+/// the material is squeezed in under pressure (freezing water expands), which
+/// the structure layer turns into stress.
+/// </para>
 ///
 /// Each physics layer adds its own channel here. Keep channels as flat
 /// primitive arrays: no per-tile objects, no dictionaries.
@@ -25,31 +32,37 @@ public sealed class WorldGrid
     public const double TileFaceAreaM2 = TileSizeM * TileSizeM;
     public const double TileVolumeM3 = TileSizeM * TileSizeM * TileSizeM;
 
+    /// <summary>Smallest free volume gas is considered to have, so pressure stays finite in a packed tile.</summary>
+    public const double MinFreeVolumeM3 = 1e-6;
+
     public readonly int Width;
     public readonly int Height;
     public readonly int Depth;
     public readonly int Count;
     public readonly MaterialTable Materials;
 
-    /// <summary>Material id per tile, see <see cref="Materials.MaterialTable"/>.</summary>
+    /// <summary>Condensed (solid or liquid) material id per tile; <see cref="MaterialTable.Empty"/> when none.</summary>
     public readonly ushort[] Material;
 
     /// <summary>
-    /// Temperature per tile in kelvin. Double, not float: a float can't resolve
-    /// the tiny per-tick changes of slow conduction at room temperature, and the
-    /// rounding silently destroys energy.
+    /// Temperature per tile in kelvin, shared by everything in the tile. Double,
+    /// not float: a float can't resolve the tiny per-tick changes of slow
+    /// conduction at room temperature, and the rounding silently destroys energy.
     /// </summary>
     public readonly double[] Temperature;
 
-    /// <summary>Mass of the tile's material in kg.</summary>
+    /// <summary>Mass of the condensed material in kg (0 when the slot is empty).</summary>
     public readonly double[] Mass;
 
     /// <summary>
-    /// Energy (J) a tile is holding part-way through a phase change, while its
-    /// temperature is pinned at the transition point. Positive: absorbed toward
-    /// melting or boiling. Negative: released toward freezing or condensing.
+    /// Energy (J) the condensed material is holding part-way through melting
+    /// (positive) or freezing (negative), while the temperature is pinned at
+    /// the melting point.
     /// </summary>
     public readonly double[] LatentEnergy;
+
+    /// <summary>Gas mass in kg per species per tile: <c>GasMass[species][tile]</c>, species as in <see cref="MaterialTable.GasIds"/>.</summary>
+    public readonly double[][] GasMass;
 
     public WorldGrid(int width, int height, int depth, MaterialTable materials)
     {
@@ -68,6 +81,9 @@ public sealed class WorldGrid
         Temperature = new double[Count];
         Mass = new double[Count];
         LatentEnergy = new double[Count];
+        GasMass = new double[materials.GasCount][];
+        for (int s = 0; s < GasMass.Length; s++)
+            GasMass[s] = new double[Count];
     }
 
     public int Index(int x, int y, int z) => (z * Height + y) * Width + x;
@@ -82,33 +98,86 @@ public sealed class WorldGrid
     public bool InBounds(int x, int y, int z) =>
         (uint)x < (uint)Width && (uint)y < (uint)Height && (uint)z < (uint)Depth;
 
-    /// <summary>Fill every tile completely with one material.</summary>
+    /// <summary>Fill every tile completely with one material (a gas fills it at its reference density).</summary>
     public void Fill(ushort material, double temperatureK)
     {
-        Array.Fill(Material, material);
-        Array.Fill(Temperature, temperatureK);
-        Array.Fill(Mass, Materials[material].FullTileMass);
-        Array.Clear(LatentEnergy);
+        for (int i = 0; i < Count; i++)
+            Place(i, material, temperatureK);
     }
 
-    /// <summary>Fill one tile completely with a material.</summary>
+    /// <summary>Fill one tile completely with a material, replacing everything in it.</summary>
     public void Set(int x, int y, int z, ushort material, double temperatureK) =>
-        SetAt(Index(x, y, z), material, temperatureK, Materials[material].FullTileMass);
+        Place(Index(x, y, z), material, temperatureK);
 
-    /// <summary>Put an exact mass of a material in one tile.</summary>
-    public void SetAt(int index, ushort material, double temperatureK, double massKg)
+    /// <summary>Fill one tile completely with a material, replacing everything in it.</summary>
+    public void Place(int index, ushort material, double temperatureK)
     {
-        Material[index] = material;
+        foreach (var gas in GasMass) gas[index] = 0.0;
+        int species = Materials.GasIndexOf(material);
+        if (species >= 0)
+        {
+            SetCondensed(index, MaterialTable.Empty, 0.0);
+            GasMass[species][index] = Materials[material].FullTileMass;
+        }
+        else
+        {
+            SetCondensed(index, material, Materials[material].FullTileMass);
+        }
         Temperature[index] = temperatureK;
-        Mass[index] = massKg;
+    }
+
+    /// <summary>Put an exact mass of a solid or liquid in a tile's condensed slot. Leaves its gas alone.</summary>
+    public void SetCondensed(int index, ushort material, double massKg)
+    {
+        if (Materials.GasIndexOf(material) >= 0 && material != MaterialTable.Empty)
+            throw new ArgumentException("A gas can't go in the condensed slot.", nameof(material));
+        Material[index] = massKg > 0.0 ? material : MaterialTable.Empty;
+        Mass[index] = massKg > 0.0 ? massKg : 0.0;
         LatentEnergy[index] = 0.0;
     }
 
-    /// <summary>Heat capacity of one tile's contents, J/K.</summary>
-    public double HeatCapacity(int index) => Mass[index] * Materials[Material[index]].SpecificHeat;
+    public bool HasCondensed(int index) => Material[index] != MaterialTable.Empty;
 
-    /// <summary>How full a tile is relative to its material's natural density (1 = exactly full).</summary>
-    public double FillFraction(int index) => Mass[index] / Materials[Material[index]].FullTileMass;
+    /// <summary>Volume the condensed material occupies, m³ (may exceed the tile when squeezed).</summary>
+    public double CondensedVolume(int index) =>
+        HasCondensed(index) ? Mass[index] / Materials[Material[index]].Density : 0.0;
+
+    /// <summary>Volume left for gas, m³.</summary>
+    public double FreeVolume(int index) => Math.Max(0.0, TileVolumeM3 - CondensedVolume(index));
+
+    public double TotalGasMass(int index)
+    {
+        double total = 0.0;
+        foreach (var gas in GasMass) total += gas[index];
+        return total;
+    }
+
+    /// <summary>Heat capacity of everything in a tile, J/K.</summary>
+    public double HeatCapacity(int index)
+    {
+        double c = Mass[index] * Materials[Material[index]].SpecificHeat;
+        var gasIds = Materials.GasIds;
+        for (int s = 0; s < gasIds.Count; s++)
+            c += GasMass[s][index] * Materials[gasIds[s]].SpecificHeat;
+        return c;
+    }
+
+    /// <summary>How full the condensed slot is relative to its material's natural density (1 = exactly full).</summary>
+    public double FillFraction(int index) =>
+        HasCondensed(index) ? Mass[index] / Materials[Material[index]].FullTileMass : 0.0;
+
+    /// <summary>
+    /// The material a viewer should draw: the condensed material if it fills at
+    /// least <paramref name="minFill"/> of the tile, otherwise the most massive gas.
+    /// </summary>
+    public ushort DisplayMaterial(int index, double minFill = 0.1)
+    {
+        if (HasCondensed(index) && FillFraction(index) >= minFill) return Material[index];
+        int best = 0;
+        for (int s = 1; s < GasMass.Length; s++)
+            if (GasMass[s][index] > GasMass[best][index]) best = s;
+        return GasMass[best][index] > 0.0 ? Materials.GasIds[best] : Material[index];
+    }
 
     public WorldGrid Clone()
     {
@@ -117,6 +186,8 @@ public sealed class WorldGrid
         Array.Copy(Temperature, copy.Temperature, Count);
         Array.Copy(Mass, copy.Mass, Count);
         Array.Copy(LatentEnergy, copy.LatentEnergy, Count);
+        for (int s = 0; s < GasMass.Length; s++)
+            Array.Copy(GasMass[s], copy.GasMass[s], Count);
         return copy;
     }
 }

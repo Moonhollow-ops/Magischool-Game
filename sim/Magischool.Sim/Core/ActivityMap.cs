@@ -32,6 +32,7 @@ public sealed class ActivityMap
         ChunksZ = (depth + SizeZ - 1) / SizeZ;
         Count = ChunksX * ChunksY * ChunksZ;
         Awake = new bool[Count];
+        Stirred = new bool[Count];
         Array.Fill(Awake, true);
     }
 
@@ -39,6 +40,14 @@ public sealed class ActivityMap
 
     /// <summary>Per chunk: true when its physics runs this tick.</summary>
     public readonly bool[] Awake;
+
+    /// <summary>
+    /// Per chunk: set during a tick when something moved in it (or wants to move into it,
+    /// for a sleeping chunk). <see cref="ActivitySystem"/> keeps stirred chunks awake, wakes
+    /// stirred sleepers, and clears the flags. Systems only ever set flags to true, so
+    /// parallel writers can't disagree.
+    /// </summary>
+    internal readonly bool[] Stirred;
 
     public int AwakeCount
     {

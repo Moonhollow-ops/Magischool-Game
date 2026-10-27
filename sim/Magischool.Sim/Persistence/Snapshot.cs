@@ -16,7 +16,7 @@ namespace Magischool.Sim.Persistence;
 public static class Snapshot
 {
     private const uint Magic = 0x5753474D; // "MGSW"
-    public const ushort FormatVersion = 4;
+    public const ushort FormatVersion = 5;
 
     public static void Save(Simulation sim, Stream stream)
     {
@@ -42,6 +42,13 @@ public static class Snapshot
         writer.Write(MemoryMarshal.AsBytes(grid.Temperature.AsSpan()));
         writer.Write(MemoryMarshal.AsBytes(grid.Mass.AsSpan()));
         writer.Write(MemoryMarshal.AsBytes(grid.LatentEnergy.AsSpan()));
+        // Gas arrays are tagged with their material id, so a table that later gains gases still loads.
+        writer.Write(grid.GasMass.Length);
+        for (int s = 0; s < grid.GasMass.Length; s++)
+        {
+            writer.Write(sim.Materials.GasIds[s]);
+            writer.Write(MemoryMarshal.AsBytes(grid.GasMass[s].AsSpan()));
+        }
         writer.Write(MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()));
     }
 
@@ -75,6 +82,14 @@ public static class Snapshot
         ReadExactly(reader, MemoryMarshal.AsBytes(grid.Temperature.AsSpan()));
         ReadExactly(reader, MemoryMarshal.AsBytes(grid.Mass.AsSpan()));
         ReadExactly(reader, MemoryMarshal.AsBytes(grid.LatentEnergy.AsSpan()));
+        int gasCount = reader.ReadInt32();
+        for (int g = 0; g < gasCount; g++)
+        {
+            ushort gasId = reader.ReadUInt16();
+            int species = materials.GasIndexOf(gasId);
+            if (species < 0) throw new InvalidDataException($"Snapshot gas id {gasId} is not a gas in the table.");
+            ReadExactly(reader, MemoryMarshal.AsBytes(grid.GasMass[species].AsSpan()));
+        }
 
         var sim = new Simulation(seed, grid, materials, systems) { Tick = tick };
         ReadExactly(reader, MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()));

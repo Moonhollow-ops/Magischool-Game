@@ -9,7 +9,8 @@ cover it, including a determinism check.
 | 1 | Grid, materials, seed, ticks, save and replay | Same seed and inputs give identical state after 10,000 ticks | Done |
 | 2 | Heat conduction | A hot stone warms the air beside it within seconds; iron spreads heat faster than wood | Done |
 | 3 | Phase change with latent heat | An ice block melts into water, then boils into steam | Done |
-| 4 | Fluids and gases | A room floods through a door; steam rises and fills the ceiling | Next |
+| 4 | Fluids and gases | A room floods through a door; steam rises and fills the ceiling | Done (first pass, see below) |
+| 4b | Air currents | Warm air and smoke pool under a ceiling and spill out of a doorway; a draught through a window | Next |
 | 5 | Combustion and oxygen | Fire spreads through a wooden hut and dies when the air runs out | |
 | 6 | Structure and load | A burning support beam fails and the ceiling collapses | |
 | 7 | Ether field | Arcane charge flows through stone and ruptures an overloaded crystal | |
@@ -21,3 +22,14 @@ cover it, including a determinism check.
 
 Perception (10) was added because magic must stay secret: being seen, heard,
 or leaving evidence is a core consequence of using magic.
+
+Layer 4's first pass moves liquids and gases with conserved mass and energy:
+water falls, pools, floods through doorways and finds its level; gas follows
+pressure and its own weight, warm and light gas rises by mixing upward, and an
+open sky lets heat and steam leave the world. What it can't do yet is carry
+momentum. Gas has no velocity, so there are no currents: warm air mixes upward
+instead of pooling as a layer under the ceiling, and steam fills a room evenly
+instead of from the top down. Layer 4b adds a velocity field for air with a
+pressure solve each tick (the standard incompressible-flow method), which gives
+plumes, layers and draughts. It comes before combustion because smoke filling
+a room from the ceiling down is how fires kill.

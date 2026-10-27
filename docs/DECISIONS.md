@@ -4,6 +4,12 @@ The running record of what has been decided, newest first. Anything here is
 settled until the owner says otherwise; open questions live in
 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
 
+## 2026-10-27: Target hardware
+
+The owner develops and tests on an RTX 4070 Ti Super (16 GB) with a 12-core CPU. Physics stays on the
+CPU for now (exact determinism, double precision); GPU compute is the
+reserved option if a layer such as large-scale fluids outgrows the CPU.
+
 ## 2026-10-26: Fidelity over everything
 
 **This is the owner's magnum opus. Time and money are not a factor; only the
@@ -93,6 +99,21 @@ holding.
   under-full (melted ice) or over-full (frozen water), which the fluids and
   structure layers act on. Latent heat is stored per tile while a transition
   is under way, and `EnergyAudit` counts total energy including latent heat.
+- **Fluids and gases (layer 4):** a tile holds at most one solid or liquid
+  (with its mass) plus a gas mixture (a mass per gas) in whatever volume is
+  left. Gas pressure comes from the ideal gas law. Liquids fall, then spread
+  sideways when resting on something, slowed by viscosity, until they are a
+  5 mm film. Liquid deeper down is held 1% overfull per tile of depth as a
+  stand-in for hydrostatic pressure, which pushes it up and sideways, so
+  connected vessels level out. Gas flows down pressure differences allowing for
+  its weight, rises by trading places when lighter, and mixes slowly.
+  Different liquids don't yet displace each other, boiling points don't yet
+  depend on pressure, and puddles don't yet evaporate below boiling.
+- **Open sky:** the top of the world opens onto endless still air at room
+  temperature; the sides and floor are sealed. Without this, warming any air
+  raised the pressure of the whole sealed world and woke every chunk.
+  `Atmosphere.Balance` lays down still air at the right pressure for its height
+  so a new world starts at rest. Lab tests seal the sky to count every joule.
 - **Active regions:** the world is split into 16 x 16 x 8 tile chunks. A chunk
   sleeps when every temperature difference in and around it is under 1 mK and
   no phase change is under way, and wakes when a neighbour pushes on it or a

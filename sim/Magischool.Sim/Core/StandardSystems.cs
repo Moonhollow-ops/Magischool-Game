@@ -1,3 +1,4 @@
+using Magischool.Sim.Fluids;
 using Magischool.Sim.Thermal;
 
 namespace Magischool.Sim.Core;
@@ -8,10 +9,12 @@ namespace Magischool.Sim.Core;
 /// </summary>
 public static class StandardSystems
 {
-    public static ISimSystem[] Create() => new ISimSystem[]
+    /// <param name="openSky">False seals the top of the world too, for lab tests that count every joule.</param>
+    public static ISimSystem[] Create(bool openSky = true) => new ISimSystem[]
     {
         new ThermalSystem(),
         new PhaseSystem(),
+        new FluidSystem(openSky), // after phase changes, so fresh steam moves the same tick
         new ActivitySystem(), // always last: decides what sleeps next tick
     };
 }
