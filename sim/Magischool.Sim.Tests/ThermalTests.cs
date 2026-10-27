@@ -57,10 +57,11 @@ public class ThermalTests
     [Fact]
     public void TwoEqualTilesSettleAtTheAverage()
     {
-        var sim = Box(2, 1, 1, Air);
+        // Iron, because two tiles of still air now hardly exchange heat without air currents.
+        var sim = Box(2, 1, 1, Table.Id(BuiltInMaterials.Iron));
         sim.Grid.Temperature[0] = 400f;
         sim.Grid.Temperature[1] = 300f;
-        sim.Step(20_000);
+        sim.Step(500_000);
 
         Assert.Equal(350.0, sim.Grid.Temperature[0], 0.05);
         Assert.Equal(350.0, sim.Grid.Temperature[1], 0.05);

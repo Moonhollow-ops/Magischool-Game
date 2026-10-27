@@ -14,7 +14,7 @@ namespace Magischool.Game;
 /// current z-slice. The world only advances when an action spends ticks.
 ///
 /// Space: wait 1 tick · Enter: wait 1 s · W: wait 1 min · H: wait 10 min · Q/E: z down/up
-/// Tab: heat overlay · 1-9: pick material · Left click: place it
+/// Tab: heat overlay · A: air currents · 1-9: pick material · Left click: place it
 /// Right click: set tile to 1000 K (Shift: 100 K), a debug tool that ignores conservation
 /// F5: save · F9: load · R: new seed · Hover a tile to read its contents
 /// </summary>
@@ -31,6 +31,7 @@ public partial class WorldView : Node2D
     private int _z = TestRoomGenerator.FloorZ;
     private ushort _brush = 1;
     private bool _heatOverlay;
+    private bool _airOverlay;
     private string _status = "";
     private int _hoverX = -1, _hoverY = -1;
 
@@ -80,6 +81,7 @@ public partial class WorldView : Node2D
             case Key.Q: _z = Math.Max(0, _z - 1); break;
             case Key.E: _z = Math.Min(_sim.Grid.Depth - 1, _z + 1); break;
             case Key.Tab: _heatOverlay = !_heatOverlay; break;
+            case Key.A: _airOverlay = !_airOverlay; break;
             case Key.R: NewWorld($"seed-{Time.GetTicksMsec()}"); break;
             case Key.F5: Save(); break;
             case Key.F9: Load(); break;
@@ -149,15 +151,16 @@ public partial class WorldView : Node2D
             var color = _heatOverlay ? HeatColor(grid.Temperature[i]) : MaterialColor(_materials[grid.DisplayMaterial(i)]);
             DrawRect(new Rect2(x * TileSize, y * TileSize, TileSize - 1, TileSize - 1), color);
         }
+        if (_airOverlay) DrawAir(grid);
 
         var font = ThemeDB.FallbackFont;
         float hudY = grid.Height * TileSize + 22;
-        string mode = _heatOverlay ? "heat" : "materials";
+        string mode = (_heatOverlay ? "heat" : "materials") + (_airOverlay ? " + air" : "");
         DrawString(font, new Vector2(4, hudY),
             $"seed '{_sim.Seed}'   tick {_sim.Tick} ({_sim.ElapsedSeconds:0.0} s)   z {_z}/{grid.Depth - 1}   view {mode}   brush {_materials[_brush].Name}",
             fontSize: 16);
         DrawString(font, new Vector2(4, hudY + 22),
-            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
+            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
             fontSize: 13, modulate: new Color(0.7f, 0.7f, 0.7f));
         if (_status.Length > 0)
             DrawString(font, new Vector2(4, hudY + 42), _status, fontSize: 13, modulate: new Color(1f, 0.85f, 0.4f));
@@ -180,6 +183,31 @@ public partial class WorldView : Node2D
         }
         double celsius = grid.Temperature[i] - 273.15;
         return $"({x},{y},{z})  {held}{gases}  {celsius:0.0} °C  {FluidSystem.PressureAt(grid, i) / 1000:0.###} kPa";
+    }
+
+    /// <summary>
+    /// Air currents in this slice: a line from each tile's centre along its sideways flow
+    /// (full tile length = 1 m/s), and a dot that is orange for rising air and blue for sinking.
+    /// </summary>
+    private void DrawAir(WorldGrid grid)
+    {
+        double[] u = grid.AirVelocity[0], v = grid.AirVelocity[1], w = grid.AirVelocity[2];
+        int plane = grid.Width * grid.Height;
+        for (int y = 0; y < grid.Height; y++)
+        for (int x = 0; x < grid.Width; x++)
+        {
+            int i = grid.Index(x, y, _z);
+            // Average each tile's two faces to get the flow at its centre.
+            double cu = 0.5 * (u[i] + (x > 0 ? u[i - 1] : 0.0));
+            double cv = 0.5 * (v[i] + (y > 0 ? v[i - grid.Width] : 0.0));
+            double cw = 0.5 * (w[i] + (_z > 0 ? w[i - plane] : 0.0));
+            var centre = new Vector2((x + 0.5f) * TileSize, (y + 0.5f) * TileSize);
+            if (cu != 0.0 || cv != 0.0)
+                DrawLine(centre, centre + new Vector2((float)cu, (float)cv) * TileSize, new Color(0.9f, 0.9f, 1f), 1.5f);
+            if (Math.Abs(cw) > 0.01)
+                DrawCircle(centre, 1.5f + (float)Math.Min(Math.Abs(cw), 1.0) * 3f,
+                    cw > 0 ? new Color(1f, 0.6f, 0.2f) : new Color(0.3f, 0.6f, 1f));
+        }
     }
 
     private static Color MaterialColor(MaterialDef def) =>

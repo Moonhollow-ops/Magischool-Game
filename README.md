@@ -35,6 +35,7 @@ Viewer: open `game/project.godot` in Godot 4.7 .NET and press Play.
 | W / H | Wait 1 minute / wait 10 minutes |
 | Q / E | Down / up one z-level |
 | Tab | Toggle the heat overlay |
+| A | Toggle air currents (lines: sideways flow, dots: rising orange, sinking blue) |
 | 1 to 9 | Pick a material brush |
 | Left click | Place the brush material (costs 1 tick) |
 | Right click | Set a tile to 1000 K (Shift: 100 K). Debug only: ignores energy conservation |

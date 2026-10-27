@@ -23,8 +23,8 @@ namespace Magischool.Sim.Fluids;
 /// Gases fill whatever volume the condensed contents leave free. Each tile's
 /// pressure comes from the ideal gas law. Gas flows from high to low pressure
 /// (allowing for its own weight, so air is denser at the bottom of a room),
-/// warm or light gas rises through cooler or heavier gas by trading places
-/// with it, and gas mixtures slowly even out. Gas can't flow into a tile that
+/// is carried by air currents (see FluidSystem.Air.cs), and gas mixtures slowly
+/// even out. Gas can't flow into a tile that
 /// is almost completely full of solid or liquid, but trapped gas bubbles up
 /// through liquid.
 /// </para>
@@ -49,7 +49,7 @@ namespace Magischool.Sim.Fluids;
 /// depend on pressure.
 /// </para>
 /// </summary>
-public sealed class FluidSystem : ISimSystem
+public sealed partial class FluidSystem : ISimSystem
 {
     public const double Gravity = 9.81;
     public const double GasConstant = 8.314462618;
@@ -64,10 +64,11 @@ public sealed class FluidSystem : ISimSystem
     public const double GasLockFraction = 0.01;
 
     /// <summary>
-    /// Turbulent mixing in still indoor air, m²/s. Molecular diffusion is a thousand times
-    /// slower; real rooms mix through small draughts and convection.
+    /// Mixing of gases in still air beyond what the resolved currents carry, m²/s: the small
+    /// eddies and draughts too fine for half-metre tiles. Molecular diffusion alone is
+    /// about 2e-5 m²/s.
     /// </summary>
-    public const double EddyDiffusivity = 0.01;
+    public const double EddyDiffusivity = 0.002;
 
     // Liquid rates and per-face caps, as fractions of the source tile's liquid. The caps over
     // all six faces (down, four sides, up) add to 0.9, so a tile can never go negative.
@@ -83,8 +84,6 @@ public sealed class FluidSystem : ISimSystem
     private const double ExchangeCap = 1.0 / 14.0, BubbleFraction = 1.0 / 14.0;
     private const double PressureEpsilonPa = 1e-3;
     private const double CompositionEpsilon = 1e-6;
-    private const double BuoyancyEpsilon = 1e-5;
-    private const double BuoyancyEfficiency = 0.5;
     private const double BubbleMinKg = 1e-9;
 
     private const double TileSizeM = WorldGrid.TileSizeM;
@@ -198,6 +197,8 @@ public sealed class FluidSystem : ISimSystem
                 _gas[i] = ComputeGas(grid, i);
             }
         });
+
+        UpdateAir(sim, chunks);
 
         // Pass 1: each tile sums the flow across its six faces. Faces are always evaluated as
         // (lower index, higher index), so both sides get bitwise-identical results.
@@ -374,7 +375,10 @@ public sealed class FluidSystem : ISimSystem
             }
         }
 
-        // Exchange of equal volumes: mixing, plus warm or light gas rising through cool or heavy.
+        // Carried by the air current through this face.
+        if (loAwake && hiAwake && Advect(grid, lo, hi, axis, gl, gh, gasFlux, ref energy)) any = true;
+
+        // Exchange of equal volumes: gases slowly mixing.
         if (!gl.Locked && !gh.Locked && gl.Total > 0.0 && gh.Total > 0.0)
         {
             double fraction = 0.0;
@@ -385,13 +389,6 @@ public sealed class FluidSystem : ISimSystem
                     fraction = DiffusionFraction;
                     break;
                 }
-            }
-            if (axis == 2)
-            {
-                // Density at equal pressure goes as M / T; lo is the lower tile.
-                double heavier = (gl.MolPerKg * temperature[lo]) / (gh.MolPerKg * temperature[hi]) - 1.0;
-                if (heavier > BuoyancyEpsilon)
-                    fraction += Math.Sqrt(Gravity * TileSizeM * heavier) * Simulation.SecondsPerTick / TileSizeM * BuoyancyEfficiency;
             }
             if (fraction > 0.0)
             {
@@ -461,12 +458,11 @@ public sealed class FluidSystem : ISimSystem
             any = dm > 0.0;
         }
 
+        if (AdvectSky(grid, i, gasFlux, ref energy)) any = true;
+
         if (!g.Locked && g.Total > 0.0)
         {
             double fraction = Math.Abs(gas[_skySpecies][i] / g.Total - 1.0) > CompositionEpsilon ? DiffusionFraction : 0.0;
-            double heavier = (g.MolPerKg * t) / (_skyMolPerKg * _skyTemperatureK) - 1.0;
-            if (heavier > BuoyancyEpsilon)
-                fraction += Math.Sqrt(Gravity * TileSizeM * heavier) * Simulation.SecondsPerTick / TileSizeM * BuoyancyEfficiency;
             if (fraction > 0.0)
             {
                 double volume = Math.Min(fraction, ExchangeCap) * g.Free;
@@ -696,13 +692,14 @@ public sealed class FluidSystem : ISimSystem
             _gasMolPerKg[s] = 1.0 / def.MolarMass;
         }
         if (SkyGasOutKg.Length != table.GasCount) SkyGasOutKg = new double[table.GasCount];
-        if (_openSky)
         {
+            // The sky gas also sets what "still air" means for buoyancy, so it is needed even when sealed.
             ushort skyId = table.Id(_skyGasKey);
             _skySpecies = table.GasIndexOf(skyId);
             if (_skySpecies < 0) throw new InvalidOperationException($"The sky must be a gas, not '{_skyGasKey}'.");
             var sky = table[skyId];
             _skyMolPerKg = 1.0 / sky.MolarMass;
+            _referenceDensityFactor = _skyMolPerKg * _skyTemperatureK;
             // The sky is the next level up of the same still air Atmosphere.Balance lays down.
             _skyPressure = Atmosphere.Profile(grid.Depth + 1, sky.MolarMass, _skyTemperatureK, _groundPressurePa)[grid.Depth];
             _skyDensity = _skyPressure / (GasConstant * _skyMolPerKg * _skyTemperatureK);

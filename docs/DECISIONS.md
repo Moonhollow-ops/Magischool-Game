@@ -4,6 +4,22 @@ The running record of what has been decided, newest first. Anything here is
 settled until the owner says otherwise; open questions live in
 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
 
+## 2026-10-27: Magic is thermodynamics
+
+From the owner: spells are never scripted effects. A spell is energy and
+matter put into the physics that already exists, and nothing else.
+
+- A fireball is a fast projectile that raises the temperature of the
+  half-metre tiles it hits. Things catch fire because they pass their own
+  ignition points, and the heat rises on the air currents like any other heat.
+  There is no "50 fire damage".
+- A freeze spell is a heat sink that pulls joules out of a tile. Water freezes
+  through its latent heat of fusion, expands about 9%, and whether the pipe or
+  the stone around it cracks depends on that material's tensile strength.
+- Mass and energy are conserved absolutely, spells included. A spell moves
+  energy into or out of the world through the ether field (layer 7), which is
+  counted in the same audit, so the total never changes.
+
 ## 2026-10-27: Target hardware
 
 The owner develops and tests on an RTX 4070 Ti Super (16 GB) with a 12-core CPU. Physics stays on the
@@ -109,6 +125,15 @@ holding.
   its weight, rises by trading places when lighter, and mixes slowly.
   Different liquids don't yet displace each other, boiling points don't yet
   depend on pressure, and puddles don't yet evaporate below boiling.
+- **Air currents (layer 4b):** air has a velocity on every tile face (a
+  staggered grid, saved with the world). Each tick, air lighter than still sky
+  air at the same pressure accelerates upward, drag slows every current with a
+  2 s time constant, and a pressure solve (20 red-black over-relaxation sweeps,
+  only near air that is out of balance) makes as much air leave each tile as
+  enters it. Currents carry gas, and the heat and mixture in it, from the
+  upwind tile. Between two open-air tiles the thermal layer now uses plain
+  conduction, because the currents do the carrying the old convection
+  stand-in used to fake.
 - **Open sky:** the top of the world opens onto endless still air at room
   temperature; the sides and floor are sealed. Without this, warming any air
   raised the pressure of the whole sealed world and woke every chunk.

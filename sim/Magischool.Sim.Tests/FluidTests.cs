@@ -169,29 +169,97 @@ public class FluidTests
 
         double still = CeilingAboveHotSpot(fluids: false);
         double moving = CeilingAboveHotSpot(fluids: true);
-        Assert.True(moving > 0.1 && moving > 10 * still, $"ceiling warmed {moving:F3} K with moving air, {still:F5} K without");
+        Assert.True(moving > 0.5 && moving > 100 * still, $"ceiling warmed {moving:F3} K with moving air, {still:F5} K without");
     }
 
     [Fact]
-    public void SteamReleasedAtTheFloorRisesThroughTheRoom()
+    public void SteamReleasedAtTheFloorCollectsUnderTheCeiling()
     {
-        // Warm enough that the steam doesn't condense.
+        // Warm enough that the steam doesn't condense. Steam (18 g/mol) is lighter than air (29).
+        // It starts in one corner: an even layer over the whole floor would be a perfectly
+        // balanced (if unstable) state that a deterministic world never tips out of.
         const double warm = 390;
-        var grid = Box(4, 4, 6, warm);
+        var grid = Box(6, 6, 6, warm);
         int steam = Table.GasIndexOf(Steam);
-        for (int y = 0; y < 4; y++)
-        for (int x = 0; x < 4; x++)
-            grid.GasMass[steam][grid.Index(x, y, 0)] = 0.02;
+        for (int y = 0; y < 2; y++)
+        for (int x = 0; x < 2; x++)
+            grid.GasMass[steam][grid.Index(x, y, 0)] = 0.03;
         var sim = new Simulation("steam", grid, Table, StandardSystems.Create(openSky: false));
         double total = FluidSystem.TotalMass(grid, Steam);
 
         sim.Step(1_500);
 
         Assert.Equal(total, FluidSystem.TotalMass(grid, Steam), 12);
-        double top = 0;
+        double top = 0, bottom = 0;
         for (int i = 0; i < grid.Count; i++)
-            if (grid.Coordinates(i).Z >= 3) top += grid.GasMass[steam][i];
-        Assert.True(top > 0.4 * total, $"only {top / total:P0} of the steam reached the upper half");
+        {
+            int z = grid.Coordinates(i).Z;
+            if (z >= 3) top += grid.GasMass[steam][i];
+            else bottom += grid.GasMass[steam][i];
+        }
+        Assert.True(top > 2 * bottom, $"steam didn't layer under the ceiling: {top:E2} kg up, {bottom:E2} kg down");
+    }
+
+    [Fact]
+    public void AStoveFillsTheRoomWithWarmAirFromTheCeilingDown()
+    {
+        // A closed stone room with a 700 K iron stove on the floor.
+        var grid = Box(12, 12, 8);
+        ushort iron = Table.Id(BuiltInMaterials.Iron);
+        for (int z = 0; z < 8; z++)
+        for (int y = 0; y < 12; y++)
+        for (int x = 0; x < 12; x++)
+            if (x == 0 || y == 0 || x == 11 || y == 11 || z == 0 || z == 7) grid.Set(x, y, z, Stone, Room);
+        grid.Set(6, 6, 1, iron, 700);
+        var sim = Sealed(grid);
+        double before = EnergyAudit.TotalJoules(grid);
+
+        sim.Step(1_200);
+
+        double Layer(int z)
+        {
+            double sum = 0;
+            int n = 0;
+            for (int y = 1; y < 11; y++)
+            for (int x = 1; x < 11; x++)
+            {
+                int i = grid.Index(x, y, z);
+                if (grid.HasCondensed(i)) continue;
+                sum += grid.Temperature[i];
+                n++;
+            }
+            return sum / n - Room;
+        }
+        for (int z = 1; z < 6; z++)
+            Assert.True(Layer(z + 1) > Layer(z), $"layer {z + 1} ({Layer(z + 1):F2} K) is not warmer than layer {z} ({Layer(z):F2} K)");
+        Assert.True(Layer(6) > 2 * Layer(1), $"no warm layer under the ceiling: {Layer(6):F2} K vs {Layer(1):F2} K at the floor");
+        Assert.InRange(grid.AirVelocity[2][grid.Index(6, 6, 2)], 0.1, FluidSystem.MaxAirSpeed);
+        Assert.Equal(before, EnergyAudit.TotalJoules(grid), before * 1e-12);
+    }
+
+    [Fact]
+    public void WarmAirSpillsOutTheTopOfADoorwayAndCoolAirComesInAtTheBottom()
+    {
+        // Two rooms, 6 tiles high, joined by a doorway 4 tiles high. The left room starts 20 K warmer.
+        var grid = Box(13, 4, 6);
+        for (int y = 0; y < 4; y++)
+        for (int z = 0; z < 6; z++)
+            if (!(y == 1 && z < 4)) grid.Set(6, y, z, Stone, Room);
+        for (int y = 0; y < 4; y++)
+        for (int x = 0; x < 6; x++)
+        for (int z = 0; z < 6; z++)
+            grid.Temperature[grid.Index(x, y, z)] = Room + 20;
+        var sim = Sealed(grid);
+        double before = EnergyAudit.TotalJoules(grid);
+        double air = FluidSystem.TotalMass(grid, Air);
+
+        sim.Step(100);
+
+        // Positive x velocity is from the warm room toward the cool one.
+        Assert.True(grid.AirVelocity[0][grid.Index(6, 1, 3)] > 0.05, "warm air isn't leaving through the top of the doorway");
+        Assert.True(grid.AirVelocity[0][grid.Index(5, 1, 0)] < -0.05, "cool air isn't coming in along the floor");
+        Assert.Equal(before, EnergyAudit.TotalJoules(grid), before * 1e-12);
+        Assert.Equal(air, FluidSystem.TotalMass(grid, Air), 9);
     }
 
     [Fact]
