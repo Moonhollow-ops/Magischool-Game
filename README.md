@@ -24,6 +24,7 @@ Requires the .NET 8 SDK. For the viewer, the **.NET build** of Godot 4.7.
 dotnet test                                    # run all sim tests
 dotnet run --project tools/Magischool.Cli -- --seed moon --z 1
 dotnet run --project tools/Magischool.Cli -- --ticks 600 --heat   # temperatures after 1 min
+dotnet run --project tools/Magischool.Cli -c Release -- --size 400x400x12 --bench [--no-sleep]
 ```
 
 Viewer: open `game/project.godot` in Godot 4.7 .NET and press Play.

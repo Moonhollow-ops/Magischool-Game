@@ -16,7 +16,7 @@ namespace Magischool.Sim.Persistence;
 public static class Snapshot
 {
     private const uint Magic = 0x5753474D; // "MGSW"
-    public const ushort FormatVersion = 3;
+    public const ushort FormatVersion = 4;
 
     public static void Save(Simulation sim, Stream stream)
     {
@@ -42,6 +42,7 @@ public static class Snapshot
         writer.Write(MemoryMarshal.AsBytes(grid.Temperature.AsSpan()));
         writer.Write(MemoryMarshal.AsBytes(grid.Mass.AsSpan()));
         writer.Write(MemoryMarshal.AsBytes(grid.LatentEnergy.AsSpan()));
+        writer.Write(MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()));
     }
 
     public static Simulation Load(Stream stream, MaterialTable materials, IEnumerable<ISimSystem>? systems = null)
@@ -76,6 +77,7 @@ public static class Snapshot
         ReadExactly(reader, MemoryMarshal.AsBytes(grid.LatentEnergy.AsSpan()));
 
         var sim = new Simulation(seed, grid, materials, systems) { Tick = tick };
+        ReadExactly(reader, MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()));
         sim.Rng.State = rngState;
         sim.Rng.Increment = rngIncrement;
         return sim;

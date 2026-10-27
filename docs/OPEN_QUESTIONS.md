@@ -44,11 +44,9 @@ owner answers; answered questions move to [DECISIONS.md](DECISIONS.md).
 
 ## Raised by the school day
 
-11. **What happens to the world during long waits?** A two-hour class is
-    72,000 ticks and a night's sleep is about 290,000. Default: only "active"
-    tiles (something changing nearby) are simulated tick by tick; settled areas
-    sleep and catch up in one calculated jump when touched. The result is the
-    same physics, just skipping work where nothing is happening.
+11. ~~What happens to the world during long waits?~~ Built: quiet chunks
+    sleep (see DECISIONS.md). A mostly quiet 400 x 400 x 12 city runs at about
+    1 ms per tick; a fully busy one at about 15 ms on 4 cores.
 12. **Are test questions grounded in the real sim?** Partly answered: tests are
     tied to classes and professors teach the mechanics. Still open: should the
     questions be generated from the actual material and spell data, so answers

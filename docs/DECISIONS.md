@@ -93,5 +93,13 @@ holding.
   under-full (melted ice) or over-full (frozen water), which the fluids and
   structure layers act on. Latent heat is stored per tile while a transition
   is under way, and `EnergyAudit` counts total energy including latent heat.
+- **Active regions:** the world is split into 16 x 16 x 8 tile chunks. A chunk
+  sleeps when every temperature difference in and around it is under 1 mK and
+  no phase change is under way, and wakes when a neighbour pushes on it or a
+  command touches it. Faces to a sleeping chunk carry nothing from either side,
+  so energy stays exactly conserved. Sleep state is saved and hashed.
+- **Parallelism:** physics loops run per chunk on all cores. Each tile only
+  writes itself from the start-of-tick state, so results are identical for any
+  thread count (tested).
 - **Input:** all outside changes enter the world as `WorldCommand`s applied at
   the start of a tick. That is what makes replays exact.

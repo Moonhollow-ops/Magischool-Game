@@ -10,7 +10,8 @@ namespace Magischool.Sim.Thermal;
 /// Every shared face between two tiles is a thermal conductance G (W/K), built
 /// from two half-tile resistances in series. Heat flows from hot to cold at
 /// G × ΔT watts. Each face's transfer is subtracted from one tile and added to
-/// the other, so energy is conserved to double precision.
+/// the other, so energy is conserved to double precision. Only awake chunks
+/// (see <see cref="ActivityMap"/>) are simulated, in parallel.
 ///
 /// <para>Solids conduct: a half tile's resistance is (half a tile) / (k × face area).</para>
 /// <para>
@@ -69,52 +70,76 @@ public sealed class ThermalSystem : ISimSystem
         Prepare(sim);
 
         var grid = sim.Grid;
-        ushort[] material = grid.Material;
+        var activity = sim.Activity;
+        var chunks = activity.AwakeChunks();
         double[] temperature = grid.Temperature;
+        ushort[] material = grid.Material;
         _mass = grid.Mass;
-        int width = grid.Width, height = grid.Height, depth = grid.Depth;
-        int plane = width * height;
 
-        // Gather every face's transfer first, then apply, so results don't depend on loop order.
-        for (int z = 0; z < depth; z++)
-        for (int y = 0; y < height; y++)
+        // Pass 1: each tile sums the flow across its own six faces from the start-of-tick state.
+        // A face is computed once from each side; the two results are exact negatives (every
+        // operation is symmetric), so energy is conserved and tiles never write each other.
+        ChunkLoop.Run(sim, chunks, chunk =>
         {
-            int row = z * plane + y * width;
-            for (int x = 0; x < width; x++)
+            var (x0, y0, z0, x1, y1, z1) = activity.Bounds(chunk);
+            int width = grid.Width, plane = grid.Width * grid.Height;
+            for (int z = z0; z < z1; z++)
+            for (int y = y0; y < y1; y++)
+            for (int x = x0; x < x1; x++)
             {
-                int i = row + x;
-                if (x + 1 < width) Exchange(i, i + 1, material, temperature);
-                if (y + 1 < height) Exchange(i, i + width, material, temperature);
-                if (z + 1 < depth) Exchange(i, i + plane, material, temperature);
+                int i = grid.Index(x, y, z);
+                double net = 0.0;
+                if (x > 0 && Open(activity, x - 1, y, z, x0, x1, y0, y1, z0, z1)) net -= Flow(i, i - 1, material, temperature);
+                if (x + 1 < grid.Width && Open(activity, x + 1, y, z, x0, x1, y0, y1, z0, z1)) net -= Flow(i, i + 1, material, temperature);
+                if (y > 0 && Open(activity, x, y - 1, z, x0, x1, y0, y1, z0, z1)) net -= Flow(i, i - width, material, temperature);
+                if (y + 1 < grid.Height && Open(activity, x, y + 1, z, x0, x1, y0, y1, z0, z1)) net -= Flow(i, i + width, material, temperature);
+                if (z > 0 && Open(activity, x, y, z - 1, x0, x1, y0, y1, z0, z1)) net -= Flow(i, i - plane, material, temperature);
+                if (z + 1 < grid.Depth && Open(activity, x, y, z + 1, x0, x1, y0, y1, z0, z1)) net -= Flow(i, i + plane, material, temperature);
+                _delta[i] = net;
             }
-        }
+        });
 
-        for (int i = 0; i < grid.Count; i++)
+        // Pass 2: apply.
+        ChunkLoop.Run(sim, chunks, chunk =>
         {
-            double delta = _delta[i];
-            if (delta == 0.0) continue;
-            temperature[i] = Math.Max(0.0, temperature[i] + delta / (_mass[i] * _specificHeat[material[i]]));
-            _delta[i] = 0.0;
-        }
+            var (x0, y0, z0, x1, y1, z1) = activity.Bounds(chunk);
+            for (int z = z0; z < z1; z++)
+            for (int y = y0; y < y1; y++)
+            for (int x = x0; x < x1; x++)
+            {
+                int i = grid.Index(x, y, z);
+                double delta = _delta[i];
+                if (delta == 0.0) continue;
+                double capacity = _mass[i] * _specificHeat[material[i]];
+                if (capacity > 0.0) temperature[i] += delta / capacity;
+            }
+        });
     }
 
-    private void Exchange(int a, int b, ushort[] material, double[] temperature)
+    /// <summary>
+    /// A face carries heat only when both sides are awake. Faces to a sleeping chunk are
+    /// within <see cref="ActivitySystem.SleepThresholdK"/> of equilibrium by construction, and
+    /// treating them as closed from both sides keeps energy exactly conserved.
+    /// </summary>
+    private static bool Open(ActivityMap activity, int nx, int ny, int nz, int x0, int x1, int y0, int y1, int z0, int z1) =>
+        (nx >= x0 && nx < x1 && ny >= y0 && ny < y1 && nz >= z0 && nz < z1) || activity.IsAwakeAt(nx, ny, nz);
+
+    /// <summary>Joules flowing from tile a to tile b this tick. Flow(a, b) == -Flow(b, a) exactly.</summary>
+    private double Flow(int a, int b, ushort[] material, double[] temperature)
     {
         double dT = temperature[a] - temperature[b];
-        if (dT == 0.0) return;
+        if (dT == 0.0) return 0.0;
 
         ushort ma = material[a], mb = material[b];
+        double ca = _mass[a] * _specificHeat[ma], cb = _mass[b] * _specificHeat[mb];
+        if (ca <= 0.0 || cb <= 0.0) return 0.0;
+
         double conductance = 1.0 / (_halfResistance[ma] + _halfResistance[mb]);
         double joules = conductance * dT * Simulation.SecondsPerTick;
 
         // Never move more than this face's share of what would bring the pair to equilibrium.
-        double ca = _mass[a] * _specificHeat[ma], cb = _mass[b] * _specificHeat[mb];
-        if (ca <= 0.0 || cb <= 0.0) return;
         double limit = dT * (ca * cb / (ca + cb)) / FacesPerTile;
-        if (Math.Abs(joules) > Math.Abs(limit)) joules = limit;
-
-        _delta[a] -= joules;
-        _delta[b] += joules;
+        return Math.Abs(joules) > Math.Abs(limit) ? limit : joules;
     }
 
     private void Prepare(Simulation sim)

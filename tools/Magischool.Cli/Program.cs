@@ -7,10 +7,12 @@ using Magischool.Sim.WorldGen;
 
 // Headless runner: build a seeded test room, run it, print one z-slice as text.
 //   dotnet run --project tools/Magischool.Cli -- --seed moon --ticks 100 --z 1
-//   --size 200x200x6 sets the world size; --heat prints temperatures in °C; --bench times 1,000 ticks.
+//   --size 400x400x12 sets the world size; --heat prints temperatures in °C; --bench times 1,000 ticks;
+//   --no-sleep keeps every chunk awake (the worst case for performance).
 string seed = "moonhollow";
 int width = 48, height = 32, depth = 4;
 bool heat = false;
+bool noSleep = false;
 int ticks = 0;
 int z = TestRoomGenerator.FloorZ;
 bool bench = false;
@@ -24,18 +26,22 @@ for (int i = 0; i < args.Length; i++)
         case "--z": z = int.Parse(args[++i]); break;
         case "--bench": bench = true; break;
         case "--heat": heat = true; break;
+        case "--no-sleep": noSleep = true; break;
         case "--size":
             var parts = args[++i].Split('x');
             (width, height, depth) = (int.Parse(parts[0]), int.Parse(parts[1]), int.Parse(parts[2]));
             break;
         default:
-            Console.Error.WriteLine($"Unknown argument '{args[i]}'. Use --seed, --ticks, --z, --size, --heat, --bench.");
+            Console.Error.WriteLine($"Unknown argument '{args[i]}'. Use --seed, --ticks, --z, --size, --heat, --no-sleep, --bench.");
             return 1;
     }
 }
 
 var materials = BuiltInMaterials.CreateTable();
-var sim = TestRoomGenerator.Create(seed, materials, width, height, depth, StandardSystems.Create());
+var systems = noSleep
+    ? Array.FindAll(StandardSystems.Create(), s => s is not ActivitySystem) // every chunk stays awake: worst case
+    : StandardSystems.Create();
+var sim = TestRoomGenerator.Create(seed, materials, width, height, depth, systems);
 if (z < 0 || z >= sim.Grid.Depth)
 {
     Console.Error.WriteLine($"z must be between 0 and {sim.Grid.Depth - 1}.");
@@ -68,7 +74,7 @@ if (bench)
     sim.Step(benchTicks);
     timer.Stop();
     double perTick = timer.Elapsed.TotalMilliseconds / benchTicks;
-    Console.WriteLine($"bench: {benchTicks} ticks in {timer.Elapsed.TotalMilliseconds:0} ms ({perTick:0.000} ms/tick, {grid.Count:N0} tiles)");
+    Console.WriteLine($"bench: {benchTicks} ticks in {timer.Elapsed.TotalMilliseconds:0} ms ({perTick:0.000} ms/tick, {grid.Count:N0} tiles, {sim.Activity.AwakeCount}/{sim.Activity.Count} chunks awake)");
 }
 return 0;
 

@@ -39,6 +39,7 @@ public sealed record SetMaterial(int X, int Y, int Z, ushort Material) : WorldCo
         if (Material >= sim.Materials.Count)
             throw new ArgumentOutOfRangeException(nameof(Material), $"No material with id {Material}.");
         int i = sim.Grid.Index(X, Y, Z);
+        sim.Activity.WakeAround(X, Y, Z);
         sim.Grid.SetAt(i, Material, sim.Grid.Temperature[i], sim.Materials[Material].FullTileMass);
     }
 
@@ -62,6 +63,7 @@ public sealed record SetTemperature(int X, int Y, int Z, float Kelvin) : WorldCo
     public override void Apply(Simulation sim)
     {
         if (!sim.Grid.InBounds(X, Y, Z)) return;
+        sim.Activity.WakeAround(X, Y, Z);
         sim.Grid.Temperature[sim.Grid.Index(X, Y, Z)] = Math.Max(0.0, Kelvin);
     }
 
@@ -92,6 +94,7 @@ public sealed record AddHeat(int X, int Y, int Z, double Joules) : WorldCommand
         int i = sim.Grid.Index(X, Y, Z);
         double capacity = sim.Grid.HeatCapacity(i);
         if (capacity <= 0.0) return;
+        sim.Activity.WakeAround(X, Y, Z);
         sim.Grid.Temperature[i] += Joules / capacity;
     }
 
