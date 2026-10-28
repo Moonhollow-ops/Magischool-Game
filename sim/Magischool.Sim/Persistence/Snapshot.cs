@@ -16,7 +16,7 @@ namespace Magischool.Sim.Persistence;
 public static class Snapshot
 {
     private const uint Magic = 0x5753474D; // "MGSW"
-    public const ushort FormatVersion = 10;
+    public const ushort FormatVersion = 11;
 
     public static void Save(Simulation sim, Stream stream)
     {
@@ -61,6 +61,13 @@ public static class Snapshot
         writer.Write(MemoryMarshal.AsBytes(grid.EtherAmbient.AsSpan()));
         writer.Write(MemoryMarshal.AsBytes(grid.EtherRefillRate.AsSpan()));
         writer.Write(MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()));
+        writer.Write(sim.Projectiles.Count);
+        foreach (var bolt in sim.Projectiles)
+        {
+            writer.Write(bolt.X); writer.Write(bolt.Y); writer.Write(bolt.Z);
+            writer.Write(bolt.VX); writer.Write(bolt.VY); writer.Write(bolt.VZ);
+            writer.Write(bolt.Joules); writer.Write(bolt.Age);
+        }
     }
 
     public static Simulation Load(Stream stream, MaterialTable materials, IEnumerable<ISimSystem>? systems = null)
@@ -116,6 +123,16 @@ public static class Snapshot
 
         var sim = new Simulation(seed, grid, materials, systems) { Tick = tick };
         ReadExactly(reader, MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()));
+        int bolts = reader.ReadInt32();
+        for (int b = 0; b < bolts; b++)
+        {
+            sim.Projectiles.Add(new Magic.Projectile
+            {
+                X = reader.ReadDouble(), Y = reader.ReadDouble(), Z = reader.ReadDouble(),
+                VX = reader.ReadDouble(), VY = reader.ReadDouble(), VZ = reader.ReadDouble(),
+                Joules = reader.ReadDouble(), Age = reader.ReadDouble(),
+            });
+        }
         sim.Rng.State = rngState;
         sim.Rng.Increment = rngIncrement;
         return sim;

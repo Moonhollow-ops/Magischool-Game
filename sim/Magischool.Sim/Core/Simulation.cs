@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Magischool.Sim.Determinism;
+using Magischool.Sim.Magic;
 using Magischool.Sim.Materials;
 using Magischool.Sim.Persistence;
 
@@ -50,6 +51,9 @@ public sealed class Simulation
 
     /// <summary>Which chunks are awake. Part of the world state.</summary>
     public ActivityMap Activity { get; }
+
+    /// <summary>Spells in flight, in the order they were cast. Part of the world state.</summary>
+    public List<Projectile> Projectiles { get; } = new();
 
     /// <summary>
     /// How many threads physics may use. Results are identical for any value:

@@ -38,6 +38,8 @@ internal static class StateHasher
         hash = SeedHash.Hash(MemoryMarshal.AsBytes(grid.EtherAmbient.AsSpan()), hash);
         hash = SeedHash.Hash(MemoryMarshal.AsBytes(grid.EtherRefillRate.AsSpan()), hash);
         hash = SeedHash.Hash(MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()), hash);
+        var bolts = sim.Projectiles.ToArray();
+        hash = SeedHash.Hash(MemoryMarshal.AsBytes(bolts.AsSpan()), hash);
         return hash;
     }
 }

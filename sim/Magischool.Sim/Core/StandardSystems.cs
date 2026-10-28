@@ -1,6 +1,7 @@
 using Magischool.Sim.Combustion;
 using Magischool.Sim.Ether;
 using Magischool.Sim.Fluids;
+using Magischool.Sim.Magic;
 using Magischool.Sim.Structure;
 using Magischool.Sim.Thermal;
 
@@ -16,6 +17,7 @@ public static class StandardSystems
     public static ISimSystem[] Create(bool openSky = true) => new ISimSystem[]
     {
         new EtherSystem(), // first, so a rupture's heat spreads the same tick
+        new SpellSystem(), // spells in flight strike before heat spreads
         new ThermalSystem(),
         new PhaseSystem(),
         new CombustionSystem(),

@@ -22,6 +22,10 @@ public abstract record WorldCommand
             SetMaterial.TagValue => new SetMaterial(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(), reader.ReadUInt16()),
             SetTemperature.TagValue => new SetTemperature(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(), reader.ReadSingle()),
             AddHeat.TagValue => new AddHeat(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(), reader.ReadDouble()),
+            Magic.CastHeat.TagValue => Magic.CastHeat.ReadFrom(reader),
+            Magic.CastFreeze.TagValue => Magic.CastFreeze.ReadFrom(reader),
+            Magic.CastCharge.TagValue => Magic.CastCharge.ReadFrom(reader),
+            Magic.CastFireball.TagValue => Magic.CastFireball.ReadFrom(reader),
             _ => throw new InvalidDataException($"Unknown command tag {tag}."),
         };
     }
