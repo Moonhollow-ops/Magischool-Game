@@ -27,6 +27,7 @@ public partial class WorldView : Node2D
     private const string SavePath = "user://world.snap";
 
     private readonly MaterialTable _materials = BuiltInMaterials.CreateTable();
+    private int SmokeGas => _materials.GasIndexOf(_materials.Id(BuiltInMaterials.Smoke));
     private Simulation _sim = null!;
     private int _z = TestRoomGenerator.FloorZ;
     private ushort _brush = 1;
@@ -149,7 +150,10 @@ public partial class WorldView : Node2D
         {
             int i = grid.Index(x, y, _z);
             var color = _heatOverlay ? HeatColor(grid.Temperature[i]) : MaterialColor(_materials[grid.DisplayMaterial(i)]);
+            if (!_heatOverlay && SmokeGas >= 0) color = color.Lerp(SmokeColor, SmokeShade(grid, i));
             DrawRect(new Rect2(x * TileSize, y * TileSize, TileSize - 1, TileSize - 1), color);
+            if (grid.Flame[i] != 0)
+                DrawCircle(new Vector2((x + 0.5f) * TileSize, (y + 0.5f) * TileSize), TileSize * 0.22f, FlameColor);
         }
         if (_airOverlay) DrawAir(grid);
 
@@ -182,7 +186,18 @@ public partial class WorldView : Node2D
             if (m > 0) gases.Append($", {_materials[_materials.GasIds[s]].Name} {m * 1000:0.##} g");
         }
         double celsius = grid.Temperature[i] - 273.15;
-        return $"({x},{y},{z})  {held}{gases}  {celsius:0.0} °C  {FluidSystem.PressureAt(grid, i) / 1000:0.###} kPa";
+        string burning = grid.Flame[i] != 0 ? "  burning" : "";
+        return $"({x},{y},{z})  {held}{gases}  {celsius:0.0} °C  {FluidSystem.PressureAt(grid, i) / 1000:0.###} kPa{burning}";
+    }
+
+    private static readonly Color SmokeColor = new(0.15f, 0.15f, 0.15f);
+    private static readonly Color FlameColor = new(1f, 0.55f, 0.1f);
+
+    /// <summary>How dark to draw a tile's smoke: none at 0, nearly black by 2 g of soot in the tile.</summary>
+    private float SmokeShade(WorldGrid grid, int i)
+    {
+        double grams = grid.GasMass[SmokeGas][i] * 1000.0;
+        return (float)(0.85 * grams / (grams + 0.5));
     }
 
     /// <summary>

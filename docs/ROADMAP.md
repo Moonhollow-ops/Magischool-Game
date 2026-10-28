@@ -11,8 +11,8 @@ cover it, including a determinism check.
 | 3 | Phase change with latent heat | An ice block melts into water, then boils into steam | Done |
 | 4 | Fluids and gases | A room floods through a door; steam rises and fills the ceiling | Done (first pass, see below) |
 | 4b | Air currents | Warm air and smoke pool under a ceiling and spill out of a doorway; a draught through a window | Done |
-| 5 | Combustion and oxygen | Fire spreads through a wooden hut and dies when the air runs out | Next |
-| 6 | Structure and load | A burning support beam fails and the ceiling collapses | |
+| 5 | Combustion and oxygen | Fire spreads through a wooden hut and dies when the air runs out | Done |
+| 6 | Structure and load | A burning support beam fails and the ceiling collapses | Next |
 | 7 | Ether field | Arcane charge flows through stone and ruptures an overloaded crystal | |
 | 8 | Spells as field inputs | Spells only add heat, force, charge or matter; the frozen pipe bursts with no special code | |
 | 9 | Bodies | A creature with body temperature, wounds and needs reacts to all of the above | |
@@ -33,3 +33,13 @@ the top of a doorway while cool air comes in along the floor. Velocity isn't
 yet carried along by the flow itself (no momentum advection), so currents
 stop soon after whatever drives them stops; wind and coasting draughts come
 with weather.
+
+Layer 5 adds oxygen and fire. Air is 23% oxygen by mass; wood burns where its
+surface is past its ignition point, taking oxygen from the air beside it and
+giving back carbon dioxide, steam and smoke, and its heat of combustion is
+counted in the energy audit so burning conserves energy exactly. Each fuel
+face keeps a thin surface temperature, warmed by the hot gas and by any flame
+in that gas, so a fire keeps its own face lit and spreads to the wood around
+it over minutes. In the test hut a smouldering log sets the corner walls
+alight, and the fire goes out once it has drawn the oxygen down to about 15%.
+Charring, smouldering, carbon monoxide and wet wood come later.

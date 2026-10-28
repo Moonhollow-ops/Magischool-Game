@@ -139,6 +139,20 @@ holding.
   raised the pressure of the whole sealed world and woke every chunk.
   `Atmosphere.Balance` lays down still air at the right pressure for its height
   so a new world starts at rest. Lab tests seal the sky to count every joule.
+- **Combustion (layer 5):** air is a fixed mixture, 23.14% oxygen by mass,
+  and the rest is nitrogen; nitrogen, carbon dioxide and smoke are gases of
+  their own. A fuel lists its heat of combustion, the oxygen it needs per
+  kilogram and its products (wood burns as cellulose: 15 MJ/kg, 1.17 kg of
+  oxygen, giving carbon dioxide, steam and 1.5% smoke). The energy audit
+  gives each fuel a chemical offset, so the heat of combustion is already in
+  the total before it is released. Burning is computed per pair of fuel tile
+  and gas tile, identically from both sides, at 12 g/(m²·s) in full air,
+  slowing as the oxygen thins and stopping below 14.5% by mass. Each fuel
+  face has a 1 cm surface layer with its own temperature, warmed by
+  convection (10 W/(m²·K)) and radiation from its gas and by 25 kW/m² from any
+  flame in that gas, and cooled by conduction into the fuel; the heat it takes
+  in comes out of the gas. A face burns while that surface is at or above the
+  ignition point. Flames and surface temperatures are saved and hashed.
 - **Active regions:** the world is split into 16 x 16 x 8 tile chunks. A chunk
   sleeps when every temperature difference in and around it is under 1 mK and
   no phase change is under way, and wakes when a neighbour pushes on it or a

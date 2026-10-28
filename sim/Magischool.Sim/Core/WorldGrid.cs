@@ -71,6 +71,21 @@ public sealed class WorldGrid
     /// </summary>
     public readonly double[][] AirVelocity;
 
+    /// <summary>
+    /// Which sites of a fuel tile have a flame: bit 0 is gas inside the tile itself, bits 1 to 6
+    /// the faces toward -x, +x, -y, +y, -z and +z. A flame lives in the gas beside the face it
+    /// burns on, and heats every fuel surface around that gas.
+    /// </summary>
+    public readonly byte[] Flame;
+
+    /// <summary>
+    /// Temperature of the thin surface layer on each face of a fuel tile, K, at
+    /// <c>index * 6 + face</c> with faces ordered -x, +x, -y, +y, -z, +z; 0 where the surface is
+    /// at the tile's own temperature. The layer's heat is part of the tile's: this only says how
+    /// that heat is spread through it, which decides when a face catches fire.
+    /// </summary>
+    public readonly double[] Skin;
+
     public WorldGrid(int width, int height, int depth, MaterialTable materials)
     {
         if (width <= 0 || height <= 0 || depth <= 0)
@@ -92,6 +107,8 @@ public sealed class WorldGrid
         for (int s = 0; s < GasMass.Length; s++)
             GasMass[s] = new double[Count];
         AirVelocity = new[] { new double[Count], new double[Count], new double[Count] };
+        Flame = new byte[Count];
+        Skin = new double[Count * 6];
     }
 
     public int Index(int x, int y, int z) => (z * Height + y) * Width + x;
@@ -198,6 +215,8 @@ public sealed class WorldGrid
             Array.Copy(GasMass[s], copy.GasMass[s], Count);
         for (int a = 0; a < 3; a++)
             Array.Copy(AirVelocity[a], copy.AirVelocity[a], Count);
+        Array.Copy(Flame, copy.Flame, Count);
+        Array.Copy(Skin, copy.Skin, Skin.Length);
         return copy;
     }
 }
