@@ -24,6 +24,7 @@ public class MagicTests
     private static readonly ushort Water = Table.Id(BuiltInMaterials.Water);
     private static readonly ushort Ice = Table.Id(BuiltInMaterials.Ice);
     private static readonly ushort Crystal = Table.Id(BuiltInMaterials.Crystal);
+    private static readonly ushort Etherium = Table.Id(BuiltInMaterials.Etherium);
     private const double Room = BuiltInMaterials.RoomTemperatureK;
     private const double Ordinary = 1e6;
 
@@ -48,9 +49,21 @@ public class MagicTests
 
     private static T System<T>(Simulation sim) => sim.Systems.OfType<T>().Single();
 
-    /// <summary>Everything in the world and in flight, less what came up from the reservoir and what falling released.</summary>
+    /// <summary>
+    /// Everything in the world and in flight, plus the ether crystallised into matter, less what came
+    /// up from the reservoir and what falling released: never changes.
+    /// </summary>
     private static double Ledger(Simulation sim) =>
-        EnergyAudit.TotalJoules(sim) - System<EtherSystem>(sim).ReservoirInJ - System<StructureSystem>(sim).ReleasedPotentialJ;
+        EnergyAudit.TotalJoules(sim) + sim.EtherMatterKg * Spellcasting.EtherPerKg
+        - System<EtherSystem>(sim).ReservoirInJ - System<StructureSystem>(sim).ReleasedPotentialJ;
+
+    /// <summary>The world's mass less the matter crystallised out of the ether: never changes.</summary>
+    private static double MassLedger(Simulation sim)
+    {
+        double total = 0.0;
+        for (int i = 0; i < sim.Grid.Count; i++) total += sim.Grid.Mass[i] + sim.Grid.TotalGasMass(i);
+        return total - sim.EtherMatterKg;
+    }
 
     /// <summary>A wall of wood three tiles high across a sealed room, 4 m from where the caster stands.</summary>
     private static Simulation WallScene()
@@ -174,6 +187,76 @@ public class MagicTests
     }
 
     [Fact]
+    public void ConjuredWaterIsCrystallisedEtherAndThenJustWater()
+    {
+        var grid = Ground(16, 16, 8);
+        var sim = Start(grid);
+        double before = Ledger(sim), mass = MassLedger(sim);
+        double ether = grid.Ether.Sum();
+
+        // A bucket of water conjured into the air above the floor: 5 kg at 10 MJ/kg and its heat.
+        sim.Enqueue(new CastConjure(4, 8, 3, 8, 8, 3, Water, 5.0));
+        sim.Step();
+        int target = grid.Index(8, 8, 3);
+        Assert.Equal(5.0, sim.EtherMatterKg, 1e-9);
+        double cost = 5.0 * (Spellcasting.EtherPerKg + Table[Water].SpecificHeat * Room + EnergyAudit.OffsetsFor(Table)[Water]);
+        Assert.Equal(ether - cost, grid.Ether.Sum() - System<EtherSystem>(sim).ReservoirInJ, ether * 1e-9);
+
+        // Once made it is ordinary water: it falls to the floor and spreads like any other.
+        sim.Step(300);
+        Assert.NotEqual(Water, grid.Material[target]);
+        double onFloor = 0.0;
+        for (int y = 0; y < 16; y++)
+        for (int x = 0; x < 16; x++)
+        {
+            int i = grid.Index(x, y, 1);
+            if (grid.Material[i] == Water) onFloor += grid.Mass[i];
+        }
+        Assert.Equal(5.0, onFloor, 1e-6);
+        Assert.Equal(before, Ledger(sim), Math.Abs(before) * 1e-12);
+        Assert.Equal(mass, MassLedger(sim), mass * 1e-12);
+    }
+
+    [Fact]
+    public void AnEtheriumShardEnrichesThePlaceItLiesIn()
+    {
+        var grid = Ground(16, 16, 8);
+        int shard = grid.Index(8, 8, 1);
+        grid.Set(8, 8, 1, Etherium, Room);
+        grid.SetCondensed(shard, Etherium, 0.1 * Table[Etherium].FullTileMass);
+        var sim = Start(grid);
+        sim.Step(1200);
+
+        // A 40 kg shard: the field around it is several times richer than an ordinary place, still
+        // noticeably so 1.5 m away, and the shard is all still there.
+        Assert.True(grid.EtherPotential(grid.Index(8, 8, 2)) > 4 * Ordinary);
+        Assert.True(grid.EtherPotential(grid.Index(8, 8, 4)) > 1.5 * Ordinary);
+        Assert.Equal(0.1 * Table[Etherium].FullTileMass, grid.Mass[shard], 1e-9);
+    }
+
+    [Fact]
+    public void ACasterBurnsEtheriumWhenThePlaceCannotPowerTheSpell()
+    {
+        // A place a thousand times poorer than ordinary, with a 10 kg shard of etherium near the caster.
+        var grid = Ground(16, 16, 8, Ordinary / 1000);
+        int shard = grid.Index(3, 8, 1);
+        grid.SetCondensed(shard, Etherium, 10.0);
+        var sim = Start(grid);
+        double before = Ledger(sim), mass = MassLedger(sim);
+
+        sim.Enqueue(new CastFireball(2, 8, 2, 1, 0, 0, 20_000_000));
+        sim.Step();
+
+        // The spell came out at full strength. The field the shard keeps rich around itself paid for
+        // some of it, and burning about 1.3 kg of the shard for the rest.
+        Assert.Equal(20_000_000, sim.Projectiles[0].Joules, 1e-3);
+        Assert.InRange(10.0 - grid.Mass[shard], 1.0, 2.0);
+        Assert.Equal(-(10.0 - grid.Mass[shard]), sim.EtherMatterKg, 1e-12);
+        Assert.Equal(before, Ledger(sim), Math.Abs(before) * 1e-12);
+        Assert.Equal(mass, MassLedger(sim), mass * 1e-12);
+    }
+
+    [Fact]
     public void ASpellInFlightSurvivesASnapshotAndAReplay()
     {
         var live = WallScene();
@@ -182,6 +265,7 @@ public class MagicTests
         live.Enqueue(new CastHeat(0, 2, 2, 9, 1, 1, 500_000));
         live.Enqueue(new CastFreeze(0, 2, 2, 9, 3, 1, 500_000));
         live.Enqueue(new CastCharge(0, 2, 2, 5, 2, 1, 500_000));
+        live.Enqueue(new CastConjure(0, 2, 2, 4, 2, 4, Stone, 2.0));
         live.Step();
         Assert.Single(live.Projectiles);
 

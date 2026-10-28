@@ -141,3 +141,31 @@ public sealed record CastFireball(int CasterX, int CasterY, int CasterZ, double 
     internal static CastFireball ReadFrom(BinaryReader r) =>
         new(r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadDouble(), r.ReadDouble(), r.ReadDouble(), r.ReadDouble());
 }
+
+/// <summary>
+/// Conjures matter: up to <paramref name="Kg"/> of a material, crystallised from ether the caster
+/// gathers, into the target tile. Once made it is ordinary matter, indistinguishable from any other.
+/// </summary>
+public sealed record CastConjure(int CasterX, int CasterY, int CasterZ, int TargetX, int TargetY, int TargetZ, ushort Material, double Kg) : WorldCommand
+{
+    internal const byte TagValue = 8;
+    internal override byte Tag => TagValue;
+
+    public override void Apply(Simulation sim)
+    {
+        if (!sim.Grid.InBounds(TargetX, TargetY, TargetZ)) return;
+        Spellcasting.Conjure(sim, CasterX, CasterY, CasterZ, sim.Grid.Index(TargetX, TargetY, TargetZ), Material, Kg);
+    }
+
+    internal override void Write(BinaryWriter writer)
+    {
+        writer.Write(Tag);
+        writer.Write(CasterX); writer.Write(CasterY); writer.Write(CasterZ);
+        writer.Write(TargetX); writer.Write(TargetY); writer.Write(TargetZ);
+        writer.Write(Material);
+        writer.Write(Kg);
+    }
+
+    internal static CastConjure ReadFrom(BinaryReader r) =>
+        new(r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadUInt16(), r.ReadDouble());
+}

@@ -26,6 +26,7 @@ public abstract record WorldCommand
             Magic.CastFreeze.TagValue => Magic.CastFreeze.ReadFrom(reader),
             Magic.CastCharge.TagValue => Magic.CastCharge.ReadFrom(reader),
             Magic.CastFireball.TagValue => Magic.CastFireball.ReadFrom(reader),
+            Magic.CastConjure.TagValue => Magic.CastConjure.ReadFrom(reader),
             _ => throw new InvalidDataException($"Unknown command tag {tag}."),
         };
     }

@@ -38,6 +38,12 @@ namespace Magischool.Sim.Ether;
 /// holds it past breakdown it keeps discharging, heating until it melts.
 /// </para>
 /// <para>
+/// Etherium, ether crystallised into matter, ties the tile it lies in to the plane:
+/// the tile settles to the etherium's well potential, and the plane refills it
+/// faster the more etherium there is, so a shard enriches the field around it
+/// without wearing away (see <see cref="AmbientAt"/>).
+/// </para>
+/// <para>
 /// Not modelled yet: ether carried along with moving matter, breakdown through
 /// open air (arcs).
 /// </para>
@@ -84,7 +90,33 @@ public sealed class EtherSystem : ISimSystem
     public static void Balance(WorldGrid grid)
     {
         for (int i = 0; i < grid.Count; i++)
-            grid.Ether[i] = grid.EtherCapacity(i) * grid.EtherAmbient[i];
+            grid.Ether[i] = grid.EtherCapacity(i) * AmbientAt(grid, i);
+    }
+
+    /// <summary>How fast the etheric plane refills a tile tied to it by etherium, per second, when the tile is full of it.</summary>
+    public const double WellRefillPerSecond = 1.0;
+
+    /// <summary>
+    /// The potential a tile settles to, J/m³: its place's ambient potential, or the well potential
+    /// of any etherium in it if that is higher.
+    /// </summary>
+    public static double AmbientAt(WorldGrid grid, int i)
+    {
+        double ambient = grid.EtherAmbient[i];
+        if (!grid.HasCondensed(i)) return ambient;
+        return Math.Max(ambient, grid.Materials[grid.Material[i]].EtherWellPotential);
+    }
+
+    /// <summary>
+    /// How fast the reservoir pulls a tile toward <see cref="AmbientAt"/>, per second: etherium adds
+    /// to it in proportion to how full of it the tile is, so a big crystal feeds the field around it
+    /// harder than a shard.
+    /// </summary>
+    public static double RefillRateAt(WorldGrid grid, int i)
+    {
+        double rate = grid.EtherRefillRate[i];
+        if (!grid.HasCondensed(i) || grid.Materials[grid.Material[i]].EtherWellPotential <= 0f) return rate;
+        return rate + Math.Min(1.0, grid.FillFraction(i)) * WellRefillPerSecond;
     }
 
     /// <summary>Resistance of half a tile to ether flowing across it, s/m³.</summary>
@@ -157,8 +189,8 @@ public sealed class EtherSystem : ISimSystem
                             activity.Stirred[activity.ChunkAt(nx, ny, nz)] = true;
                     }
                 }
-                double refill = _capacity[i] * grid.EtherRefillRate[i];
-                pull += refill * (grid.EtherAmbient[i] - _potential[i]);
+                double refill = _capacity[i] * RefillRateAt(grid, i);
+                pull += refill * (AmbientAt(grid, i) - _potential[i]);
                 conductance += refill;
                 if (Math.Abs(pull / conductance) > QuietJm3) restless = true;
                 _delta[i] = flow;
@@ -178,11 +210,11 @@ public sealed class EtherSystem : ISimSystem
                 int i = grid.Index(x, y, z);
                 double charge = grid.Ether[i] + _delta[i];
                 // Relaxed exactly over the tick, so even a fast ley node never overshoots.
-                double rate = grid.EtherRefillRate[i];
+                double rate = RefillRateAt(grid, i);
                 double share = rate == WorldGrid.DefaultEtherRefillPerSecond
                     ? DefaultRefillShare
                     : 1.0 - Math.Exp(-Simulation.SecondsPerTick * rate);
-                double refill = (_capacity[i] * grid.EtherAmbient[i] - charge) * share;
+                double refill = (_capacity[i] * AmbientAt(grid, i) - charge) * share;
                 grid.Ether[i] = charge + refill;
                 fromReservoir += refill;
             }
@@ -261,8 +293,8 @@ public sealed class EtherSystem : ISimSystem
             pull += g * (grid.EtherPotential(n) - potential);
             conductance += g;
         }
-        double refill = capacity * grid.EtherRefillRate[i];
-        pull += refill * (grid.EtherAmbient[i] - potential);
+        double refill = capacity * RefillRateAt(grid, i);
+        pull += refill * (AmbientAt(grid, i) - potential);
         conductance += refill;
         return pull / conductance;
     }

@@ -14,7 +14,7 @@ cover it, including a determinism check.
 | 5 | Combustion and oxygen | Fire spreads through a wooden hut and dies when the air runs out | Done |
 | 6 | Structure and load | A burning support beam fails and the ceiling collapses | Done |
 | 7 | Ether field | Arcane charge flows through stone and ruptures an overloaded crystal | Done |
-| 8 | Spells as field inputs | Spells only add heat, force, charge or matter; the frozen pipe bursts with no special code | Done (heat and charge; force and matter later) |
+| 8 | Spells as field inputs | Spells only add heat, force, charge or matter; the frozen pipe bursts with no special code | Done (heat, charge and matter; force later) |
 | 9 | Bodies | A creature with body temperature, wounds and needs reacts to all of the above | Next |
 | 10 | Perception | NPC awareness from sight, light, sound and skill; someone notices a spell or its traces | |
 | 11 | Ecology | Plants grow, die and rot; simple creatures feed and wander | |
@@ -86,8 +86,12 @@ surface layer of the face it hit and half into the air in front: 2 MJ sets
 a wooden wall alight and 200 kJ only warms it. Freezing the water in a
 sealed lead pipe makes ice that splits the pipe along its length, with no
 code that knows about pipes; charge poured into a crystal from 4 m away
-ruptures it. Bolts in flight are saved, hashed and replayed. Force and
-conjured matter come later: force needs the kinetic energy of air and
-rubble counted first, and matter needs an answer to where its mass comes
-from. In the viewer, C places the caster and F, X, V and G cast at the
-hovered tile.
+ruptures it. Bolts in flight are saved, hashed and replayed. Conjuring
+crystallises ether into ordinary matter at 10 MJ a kilogram, so a cast in
+an ordinary place makes about a bucket of water, which then falls and
+spreads like any other. Etherium, crystallised ether left as itself,
+enriches the field around it without wearing away, and a caster burns it
+for whatever the field can't give. Force comes later: it needs the kinetic
+energy of air and rubble counted first. In the viewer, C places the caster;
+F, X, V and G cast at the hovered tile, and B conjures the brush material
+there.

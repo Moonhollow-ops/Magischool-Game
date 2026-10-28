@@ -24,6 +24,7 @@ public static class BuiltInMaterials
     public const string Smoke = "smoke";
     public const string Crystal = "crystal";
     public const string MoltenCrystal = "molten_crystal";
+    public const string Etherium = "etherium";
 
     /// <summary>Mass fraction of oxygen in dry air.</summary>
     public const float AirOxygenFraction = 0.2314f;
@@ -181,6 +182,17 @@ public static class BuiltInMaterials
             MeltingPoint = 1986f, LatentHeatFusion = 156_000f,
             FreezesInto = Crystal,
             EtherPermittivity = 40f, EtherConductivity = 2f,
+        },
+        new()
+        {
+            // Ether crystallised into matter: a pale blue stone that ties the place it lies in to the
+            // etheric plane, enriching the field around it, and that a caster can burn for power at
+            // Spellcasting.EtherPerKg. Its mundane constants are a dense glassy mineral's; it has no
+            // liquid form, and since it is ether already it never breaks down.
+            Key = Etherium, Name = "Etherium", Phase = Phase.Solid, Glyph = 'E', Color = 0x8CDCFF,
+            Density = 3200f, SpecificHeat = 800f, ThermalConductivity = 5f,
+            TensileStrength = 30f, CompressiveStrength = 300f, YoungsModulus = 60f,
+            EtherPermittivity = 100f, EtherConductivity = 3f, EtherWellPotential = 3e7f,
         },
     };
 
