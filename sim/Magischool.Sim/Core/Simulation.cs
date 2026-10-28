@@ -56,6 +56,12 @@ public sealed class Simulation
     public List<Projectile> Projectiles { get; } = new();
 
     /// <summary>
+    /// Net matter crystallised out of the ether since this simulation was created, kg: conjured
+    /// matter less etherium burned. The world's mass less this never changes.
+    /// </summary>
+    public double EtherMatterKg { get; internal set; }
+
+    /// <summary>
     /// How many threads physics may use. Results are identical for any value:
     /// every parallel loop writes only its own tiles from the start-of-tick state.
     /// </summary>

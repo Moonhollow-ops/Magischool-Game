@@ -107,6 +107,12 @@ public sealed record MaterialDef
     /// discharging into it as heat and shattering it.
     /// </summary>
     public float EtherBreakdown { get; init; } = float.PositiveInfinity;
+    /// <summary>
+    /// J/m³. For crystallised ether (etherium): a tile holding it is tied to the etheric plane and
+    /// settles to this potential, the plane refilling it faster the more of it there is (a full
+    /// tile as fast as a ley node). Zero for ordinary matter.
+    /// </summary>
+    public float EtherWellPotential { get; init; }
 
     /// <summary>Mass of one tile filled exactly to this material's density, kg.</summary>
     public double FullTileMass => Density * Core.WorldGrid.TileVolumeM3;

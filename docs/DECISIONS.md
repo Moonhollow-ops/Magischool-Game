@@ -4,6 +4,30 @@ The running record of what has been decided, newest first. Anything here is
 settled until the owner says otherwise; open questions live in
 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
 
+## 2026-10-28: Conjured matter and etherium
+
+From the owner: all magic is built from the energy of the etheric plane.
+Conjured matter is crystallised magical energy, indistinguishable from
+regular matter. Actual crystallised etherium exists as well: it adds magic
+to an environment it is placed in, and a mage can consume it to add power
+to spells.
+
+How the simulation does it:
+
+- Conjuring crystallises ether into matter at 10 MJ per kilogram, plus the
+  heat the new matter holds at the temperature of where it appears. Once made
+  it is ordinary matter, the same material id as any other.
+- Mass and energy stay balanced through one count: the net matter made from
+  ether (`Simulation.EtherMatterKg`). The world's mass less that never
+  changes, and its energy plus 10 MJ for every kilogram of it never changes
+  apart from what crosses to the reservoir.
+- Etherium is a material tied to the etheric plane: the tile it lies in
+  settles to a potential of 30 MJ/m³, refilled faster the more etherium there
+  is, so it enriches the field around it without wearing away.
+- When the field within a caster's reach can't supply a spell, the caster
+  burns etherium within reach, nearest first, for 10 MJ per kilogram plus
+  the heat it held.
+
 ## 2026-10-28: Where spell energy comes from
 
 From the owner: spell energy exists in the environment, and different places
@@ -243,8 +267,10 @@ holding.
   solid fuel, all of it at first into the surface layer of the face struck)
   and half into the gas of the tile it came from. It gutters into the gas
   where it is after 10 s or at the world's edge (into the ether in a
-  vacuum). The energy audit counts bolts in flight. Not yet: force, conjured
-  matter, rituals reaching further.
+  vacuum). The energy audit counts bolts in flight. Conjuring puts the
+  matter in the target's condensed slot (only if empty or the same
+  material, never past full) or its gas. Not yet: force, rituals reaching
+  further.
 - **Below absolute zero:** a bead of liquid too small to hold its temperature
   through a tick can be cooled past freezing by the gas around it by more
   than it holds above 0 K as a solid. Rather than flooring it (which made

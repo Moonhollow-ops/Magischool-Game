@@ -19,7 +19,8 @@ namespace Magischool.Game;
 /// Tab: heat overlay · A: air currents · S: stress · M: ether · 1-9: pick material · Left click: place it
 /// Right click: set tile to 1000 K (Shift: 100 K), a debug tool that ignores conservation
 /// Spells (all drawn from the ether around the caster): C: stand the caster on the hovered tile ·
-/// F: fireball at the hovered tile · X: freeze it · V: heat it · G: pour charge into it
+/// F: fireball at the hovered tile · X: freeze it · V: heat it · G: pour charge into it ·
+/// B: conjure 5 kg of the brush material into it
 /// F5: save · F9: load · R: new seed · Hover a tile to read its contents
 /// </summary>
 public partial class WorldView : Node2D
@@ -47,6 +48,7 @@ public partial class WorldView : Node2D
     private const double FreezeJoules = 20_000_000;
     private const double HeatJoules = 5_000_000;
     private const double ChargeJoules = 20_000_000;
+    private const double ConjureKg = 5.0;
 
     public override void _Ready()
     {
@@ -106,6 +108,7 @@ public partial class WorldView : Node2D
             case Key.X: Cast(new CastFreeze(_casterX, _casterY, _casterZ, _hoverX, _hoverY, _z, FreezeJoules)); break;
             case Key.V: Cast(new CastHeat(_casterX, _casterY, _casterZ, _hoverX, _hoverY, _z, HeatJoules)); break;
             case Key.G: Cast(new CastCharge(_casterX, _casterY, _casterZ, _hoverX, _hoverY, _z, ChargeJoules)); break;
+            case Key.B: Cast(new CastConjure(_casterX, _casterY, _casterZ, _hoverX, _hoverY, _z, _brush, ConjureKg)); break;
             case Key.F5: Save(); break;
             case Key.F9: Load(); break;
             case >= Key.Key1 and <= Key.Key9:
@@ -202,7 +205,7 @@ public partial class WorldView : Node2D
             $"seed '{_sim.Seed}'   tick {_sim.Tick} ({_sim.ElapsedSeconds:0.0} s)   z {_z}/{grid.Depth - 1}   view {mode}   brush {_materials[_brush].Name}",
             fontSize: 16);
         DrawString(font, new Vector2(4, hudY + 22),
-            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | S stress | M ether | C caster F fireball X freeze V heat G charge | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
+            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | S stress | M ether | C caster F fireball X freeze V heat G charge B conjure | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
             fontSize: 13, modulate: new Color(0.7f, 0.7f, 0.7f));
         if (_status.Length > 0)
             DrawString(font, new Vector2(4, hudY + 42), _status, fontSize: 13, modulate: new Color(1f, 0.85f, 0.4f));
