@@ -14,8 +14,8 @@ cover it, including a determinism check.
 | 5 | Combustion and oxygen | Fire spreads through a wooden hut and dies when the air runs out | Done |
 | 6 | Structure and load | A burning support beam fails and the ceiling collapses | Done |
 | 7 | Ether field | Arcane charge flows through stone and ruptures an overloaded crystal | Done |
-| 8 | Spells as field inputs | Spells only add heat, force, charge or matter; the frozen pipe bursts with no special code | Next |
-| 9 | Bodies | A creature with body temperature, wounds and needs reacts to all of the above | |
+| 8 | Spells as field inputs | Spells only add heat, force, charge or matter; the frozen pipe bursts with no special code | Done (heat and charge; force and matter later) |
+| 9 | Bodies | A creature with body temperature, wounds and needs reacts to all of the above | Next |
 | 10 | Perception | NPC awareness from sight, light, sound and skill; someone notices a spell or its traces | |
 | 11 | Ecology | Plants grow, die and rot; simple creatures feed and wander | |
 | 12 | World time | Day and night, weather, and the city changing while the player is away | |
@@ -73,3 +73,21 @@ at the ordinary potential. A great ritual that drains a place dry sees the
 hollow close from its surroundings within seconds and the reservoir make up
 the loss over half an hour. The test room now has an ordinary field, and a
 ley node and crystal outside the room's top wall (M shows the ether).
+
+Layer 8 casts spells into that physics. A caster gathers ether from
+everything within 3 m, at most half of it per cast, so in a poor place a
+spell comes out weaker; an ordinary place holds about a hundred megajoules
+within reach, so a 1 MJ spell takes about one percent and the field flows
+back within seconds. Heat puts the joules into a tile, its solid or liquid
+first. Freeze pulls heat out of a tile and hands it to the ether around the
+caster. Charge pours ether into another place. A fireball is a bolt that
+flies at 30 m/s and, where it strikes, puts half its energy into the thin
+surface layer of the face it hit and half into the air in front: 2 MJ sets
+a wooden wall alight and 200 kJ only warms it. Freezing the water in a
+sealed lead pipe makes ice that splits the pipe along its length, with no
+code that knows about pipes; charge poured into a crystal from 4 m away
+ruptures it. Bolts in flight are saved, hashed and replayed. Force and
+conjured matter come later: force needs the kinetic energy of air and
+rubble counted first, and matter needs an answer to where its mass comes
+from. In the viewer, C places the caster and F, X, V and G cast at the
+hovered tile.

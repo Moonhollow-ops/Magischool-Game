@@ -356,6 +356,13 @@ public sealed class CombustionSystem : ISimSystem
         return exchange + flameJoules;
     }
 
+    /// <summary>Heat capacity of the surface layer on one face of a solid tile, J/K.</summary>
+    public static double SurfaceLayerCapacity(WorldGrid grid, int i)
+    {
+        var def = grid.Materials[grid.Material[i]];
+        return def.Density * def.SpecificHeat * SkinDepthM * WorldGrid.TileFaceAreaM2 * Exposed(grid, i);
+    }
+
     /// <summary>
     /// Temperature of a tile beneath the surface layers of its faces, K. The layers' heat is part of
     /// the tile's, so the core holds what is left: a beam scorched on the outside can still be
@@ -365,8 +372,7 @@ public sealed class CombustionSystem : ISimSystem
     {
         double total = grid.HasTwoTemperatures(i) ? grid.CondensedHeatCapacity(i) : grid.HeatCapacity(i);
         if (total <= 0.0 || !grid.HasCondensed(i)) return grid.Temperature[i];
-        var def = grid.Materials[grid.Material[i]];
-        double layer = def.Density * def.SpecificHeat * SkinDepthM * WorldGrid.TileFaceAreaM2 * Exposed(grid, i);
+        double layer = SurfaceLayerCapacity(grid, i);
         double skinCapacity = 0.0, skinHeat = 0.0;
         for (int face = 0; face < 6; face++)
         {

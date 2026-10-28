@@ -3,6 +3,7 @@ using System.IO;
 using Godot;
 using Magischool.Sim.Core;
 using Magischool.Sim.Fluids;
+using Magischool.Sim.Magic;
 using Magischool.Sim.Materials;
 using Magischool.Sim.Persistence;
 using Magischool.Sim.Structure;
@@ -17,6 +18,8 @@ namespace Magischool.Game;
 /// Space: wait 1 tick · Enter: wait 1 s · W: wait 1 min · H: wait 10 min · Q/E: z down/up
 /// Tab: heat overlay · A: air currents · S: stress · M: ether · 1-9: pick material · Left click: place it
 /// Right click: set tile to 1000 K (Shift: 100 K), a debug tool that ignores conservation
+/// Spells (all drawn from the ether around the caster): C: stand the caster on the hovered tile ·
+/// F: fireball at the hovered tile · X: freeze it · V: heat it · G: pour charge into it
 /// F5: save · F9: load · R: new seed · Hover a tile to read its contents
 /// </summary>
 public partial class WorldView : Node2D
@@ -38,6 +41,12 @@ public partial class WorldView : Node2D
     private bool _etherOverlay;
     private string _status = "";
     private int _hoverX = -1, _hoverY = -1;
+    private int _casterX = 2, _casterY = 2, _casterZ = TestRoomGenerator.FloorZ;
+
+    private const double FireballJoules = 2_000_000;
+    private const double FreezeJoules = 20_000_000;
+    private const double HeatJoules = 5_000_000;
+    private const double ChargeJoules = 20_000_000;
 
     public override void _Ready()
     {
@@ -89,6 +98,14 @@ public partial class WorldView : Node2D
             case Key.S: _stressOverlay = !_stressOverlay; break;
             case Key.M: _etherOverlay = !_etherOverlay; break;
             case Key.R: NewWorld($"seed-{Time.GetTicksMsec()}"); break;
+            case Key.C when _sim.Grid.InBounds(_hoverX, _hoverY, _z):
+                (_casterX, _casterY, _casterZ) = (_hoverX, _hoverY, _z);
+                _status = $"Caster at ({_casterX},{_casterY},{_casterZ})";
+                break;
+            case Key.F: Cast(new CastFireball(_casterX, _casterY, _casterZ, _hoverX - _casterX, _hoverY - _casterY, _z - _casterZ, FireballJoules)); break;
+            case Key.X: Cast(new CastFreeze(_casterX, _casterY, _casterZ, _hoverX, _hoverY, _z, FreezeJoules)); break;
+            case Key.V: Cast(new CastHeat(_casterX, _casterY, _casterZ, _hoverX, _hoverY, _z, HeatJoules)); break;
+            case Key.G: Cast(new CastCharge(_casterX, _casterY, _casterZ, _hoverX, _hoverY, _z, ChargeJoules)); break;
             case Key.F5: Save(); break;
             case Key.F9: Load(); break;
             case >= Key.Key1 and <= Key.Key9:
@@ -102,6 +119,15 @@ public partial class WorldView : Node2D
             default: return;
         }
         QueueRedraw();
+    }
+
+    /// <summary>Casting takes a tick, like any action.</summary>
+    private void Cast(WorldCommand spell)
+    {
+        if (!_sim.Grid.InBounds(_hoverX, _hoverY, _z)) return;
+        _sim.Enqueue(spell);
+        _status = spell.GetType().Name;
+        SpendTicks(TicksPerWaitAction);
     }
 
     private void HandleClick(InputEventMouseButton click)
@@ -162,6 +188,11 @@ public partial class WorldView : Node2D
             if (grid.Flame[i] != 0)
                 DrawCircle(new Vector2((x + 0.5f) * TileSize, (y + 0.5f) * TileSize), TileSize * 0.22f, FlameColor);
         }
+        if (_casterZ == _z)
+            DrawArc(new Vector2((_casterX + 0.5f) * TileSize, (_casterY + 0.5f) * TileSize), TileSize * 0.4f, 0f, MathF.Tau, 16, CasterColor, 2f);
+        foreach (var bolt in _sim.Projectiles)
+            if ((int)Math.Floor(bolt.Z) == _z)
+                DrawCircle(new Vector2((float)bolt.X * TileSize, (float)bolt.Y * TileSize), TileSize * 0.3f, FlameColor);
         if (_airOverlay) DrawAir(grid);
 
         var font = ThemeDB.FallbackFont;
@@ -171,7 +202,7 @@ public partial class WorldView : Node2D
             $"seed '{_sim.Seed}'   tick {_sim.Tick} ({_sim.ElapsedSeconds:0.0} s)   z {_z}/{grid.Depth - 1}   view {mode}   brush {_materials[_brush].Name}",
             fontSize: 16);
         DrawString(font, new Vector2(4, hudY + 22),
-            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | S stress | M ether | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
+            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | S stress | M ether | C caster F fireball X freeze V heat G charge | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
             fontSize: 13, modulate: new Color(0.7f, 0.7f, 0.7f));
         if (_status.Length > 0)
             DrawString(font, new Vector2(4, hudY + 42), _status, fontSize: 13, modulate: new Color(1f, 0.85f, 0.4f));
@@ -231,6 +262,7 @@ public partial class WorldView : Node2D
 
     private static readonly Color SmokeColor = new(0.15f, 0.15f, 0.15f);
     private static readonly Color FlameColor = new(1f, 0.55f, 0.1f);
+    private static readonly Color CasterColor = new(0.85f, 0.6f, 1f);
 
     /// <summary>How dark to draw a tile's smoke: none at 0, nearly black by 2 g of soot in the tile.</summary>
     private float SmokeShade(WorldGrid grid, int i)

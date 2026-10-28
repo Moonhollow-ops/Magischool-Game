@@ -66,6 +66,14 @@ public static class EnergyAudit
         return total;
     }
 
+    /// <summary>All the energy in the simulation: the world's, and that of spells in flight.</summary>
+    public static double TotalJoules(Simulation sim)
+    {
+        double total = TotalJoules(sim.Grid);
+        foreach (var bolt in sim.Projectiles) total += bolt.Joules;
+        return total;
+    }
+
     /// <summary>Internal energy of one tile: its condensed contents, its gases and any latent energy in progress.</summary>
     public static double TileJoules(WorldGrid grid, int i) => CondensedJoules(grid, i) + GasJoules(grid, i);
 

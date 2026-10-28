@@ -230,6 +230,21 @@ holding.
   it. The aether crystal is quartz physically and melts at 1986 K into molten
   crystal, which never ruptures. The earlier placeholder arcane constants were
   replaced. Not yet: ether carried with moving matter, arcs through air.
+- **Spells (layer 8):** spells are `WorldCommand`s cast from a point (bodies
+  come with layer 9). A cast gathers ether from every tile within 3 m in
+  proportion to what each holds, taking at most half of it. Heat adds the
+  gathered joules to the target tile, its solid or liquid first. Freeze takes
+  up to the asked joules (never more than half the tile's heat above 0 K per
+  cast) and releases them into the ether around the caster, spread by
+  capacity. Charge adds the gathered ether to the target tile's field. A
+  fireball is a projectile (`Simulation.Projectiles`, saved and hashed) at
+  30 m/s, checked every quarter tile; it stops at the first tile at least 5%
+  full of solid or liquid, putting half its energy into that tile (for a
+  solid fuel, all of it at first into the surface layer of the face struck)
+  and half into the gas of the tile it came from. It gutters into the gas
+  where it is after 10 s or at the world's edge (into the ether in a
+  vacuum). The energy audit counts bolts in flight. Not yet: force, conjured
+  matter, rituals reaching further.
 - **Below absolute zero:** a bead of liquid too small to hold its temperature
   through a tick can be cooled past freezing by the gas around it by more
   than it holds above 0 K as a solid. Rather than flooring it (which made
