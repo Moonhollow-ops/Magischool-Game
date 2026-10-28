@@ -4,6 +4,41 @@ The running record of what has been decided, newest first. Anything here is
 settled until the owner says otherwise; open questions live in
 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
 
+## 2026-10-28: Bodies are trees of parts and organs
+
+The owner asked for limbs, organs, teeth and eyes instead of one skin layer,
+to allow more interesting injuries, mutations and enchantments. The tissue
+physics is kept; what it is arranged in changes.
+
+- Each body has its own anatomy: a tree of parts, each with a parent, layers
+  of tissue, a job (brain, heart, lung, liver, kidney, gut, eye, teeth, hand,
+  foot, spine) and whether it is an organ inside its parent. Cutting a part
+  takes everything attached through it. The whole anatomy is saved with the
+  body, so a changed body stays changed.
+- A part's health is the share of its working tissue still alive (skin and fat
+  don't count in a limb) times what blows have left of it. A job is done as
+  well as the healthy parts doing it add up to, against what the kind is
+  built with: one kidney is 0.5, a grafted extra lung 1.5.
+- The heart's level scales all blood flow, and below 0.3 it stops. The lungs'
+  level scales how much of each breath's oxygen is taken. Breathing needs a
+  brain, lungs and a whole spine. The liver sets how much glycogen is stored.
+  The kidneys set urine. With the liver or kidneys below half, poisons build
+  up over three days to stop the heart. The gut sets digestion, the teeth bite
+  size. Walking needs a whole spine and a sound foot, shin and thigh.
+- Organs exchange heat with the innermost layer of the part they sit in and
+  with the blood, never with the world. A blow spreads by mass through the
+  part and its organs, each tissue with its own tolerance (lung 150 J/kg, eye
+  60, tooth 400). A torn organ bleeds inside the body.
+- A part with trauma of 25 or more is torn off and becomes its own body
+  (remains, unless it took the brain). The piece with the root keeps the id,
+  blood and stores; fat's chemical energy is shared by fat. Stumps bleed 2 g/s
+  per kg cut off, before clotting. A body left without its brain dies.
+- Mutations can change a layer's tissue, keeping its energy. CastGraft grows a
+  copy of one of the kind's parts from ether at the conjuring price plus the
+  part's energy at body temperature, all or nothing.
+- Not yet: parts have no position within a tile (a fireball hits the largest
+  part there), nerves other than the spine, hormones, or healing of trauma.
+
 ## 2026-10-28: Bodies are living tissue
 
 The owner chose the most detailed of three options for layer 9: bodies are

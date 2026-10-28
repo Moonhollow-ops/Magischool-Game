@@ -104,7 +104,7 @@ public static class Physiology
     /// <summary>Energy of one layer of tissue, J.</summary>
     public static double NodeJoules(World w, Body body, int n)
     {
-        var tissue = body.Plan.NodeTissue[n];
+        var tissue = body.Anatomy.NodeTissue[n];
         var def = BodyPlans.Of(tissue);
         return body.Mass[n] * (def.SpecificHeat * body.Temperature[n] + w.Offset(tissue)) - body.FrozenKg[n] * FusionJPerKg;
     }
@@ -131,7 +131,7 @@ public static class Physiology
     }
 
     /// <summary>Heat capacity of a layer of tissue, J/K.</summary>
-    public static double Capacity(Body body, int n) => body.Mass[n] * BodyPlans.Of(body.Plan.NodeTissue[n]).SpecificHeat;
+    public static double Capacity(Body body, int n) => body.Mass[n] * BodyPlans.Of(body.Anatomy.NodeTissue[n]).SpecificHeat;
 
     public static double BloodCapacity(Body body) => body.BloodKg * BodyPlans.BloodSpecificHeat;
 
@@ -146,7 +146,7 @@ public static class Physiology
     {
         double e = NodeJoules(w, body, n) + joules;
         double m = body.Mass[n] + kg;
-        var tissue = body.Plan.NodeTissue[n];
+        var tissue = body.Anatomy.NodeTissue[n];
         body.Mass[n] = m;
         body.Temperature[n] = ((e + body.FrozenKg[n] * FusionJPerKg) / m - w.Offset(tissue)) / BodyPlans.Of(tissue).SpecificHeat;
     }
@@ -154,7 +154,7 @@ public static class Physiology
     /// <summary>Energy <paramref name="kg"/> of a layer's own tissue carries at its temperature, J.</summary>
     public static double JoulesOf(World w, Body body, int n, double kg)
     {
-        var tissue = body.Plan.NodeTissue[n];
+        var tissue = body.Anatomy.NodeTissue[n];
         return kg * (BodyPlans.Of(tissue).SpecificHeat * body.Temperature[n] + w.Offset(tissue));
     }
 
@@ -176,12 +176,13 @@ public static class Physiology
     /// <summary>A healthy, rested, fed body of the plan, warm through, standing with its feet in tile (x, y, z).</summary>
     public static Body Create(World w, BodyPlan plan, int id, int x, int y, int z)
     {
-        var body = new Body(id, plan, x, y, z);
-        for (int n = 0; n < plan.NodeCount; n++)
+        var anatomy = plan.NewAnatomy();
+        var body = new Body(id, plan, anatomy, x, y, z);
+        for (int n = 0; n < anatomy.NodeCount; n++)
         {
-            var tissue = plan.NodeTissue[n];
-            body.Mass[n] = plan.InitialMass[n];
-            body.WaterKg[n] = plan.InitialMass[n] * BodyPlans.Of(tissue).WaterFraction;
+            var tissue = anatomy.NodeTissue[n];
+            body.Mass[n] = anatomy.InitialMass[n];
+            body.WaterKg[n] = anatomy.InitialMass[n] * BodyPlans.Of(tissue).WaterFraction;
             // The usual resting profile: warm at the centre, the skin a few degrees cooler.
             body.Temperature[n] = tissue switch
             {
@@ -197,8 +198,8 @@ public static class Physiology
         body.GlycogenKg = 0.8 * plan.GlycogenMaxKg;
         body.GlycogenJ = body.GlycogenKg * GlycogenJPerKg;
         double lipid = 0.0;
-        for (int n = 0; n < plan.NodeCount; n++)
-            if (plan.NodeTissue[n] == Tissue.Fat) lipid += body.Mass[n] - body.WaterKg[n];
+        for (int n = 0; n < anatomy.NodeCount; n++)
+            if (anatomy.NodeTissue[n] == Tissue.Fat) lipid += body.Mass[n] - body.WaterKg[n];
         body.FatJ = lipid * FatJPerKg;
         body.OxygenKg = 0.97 * plan.OxygenStoreKg;
         body.OxygenJ = body.OxygenKg * w.OxygenJPerKg;
@@ -210,8 +211,52 @@ public static class Physiology
     {
         double kg = 0.0;
         for (int n = 0; n < body.Mass.Length; n++)
-            if (body.Plan.NodeTissue[n] == Tissue.Fat) kg += body.Mass[n] - body.WaterKg[n];
+            if (body.Anatomy.NodeTissue[n] == Tissue.Fat) kg += body.Mass[n] - body.WaterKg[n];
         return kg;
+    }
+
+    /// <summary>Whether a layer is watery enough to hold the body's spare water (blood plasma bathes it).</summary>
+    public static bool HoldsWater(Body body, int n) => BodyPlans.Of(body.Anatomy.NodeTissue[n]).WaterFraction >= 0.5;
+
+    /// <summary>
+    /// Takes up to <paramref name="kg"/> of liquid water from the watery layers, each in proportion
+    /// to its free water, and returns what it took: kg and J (both positive).
+    /// </summary>
+    public static (double Kg, double J) RemoveWater(World w, Body body, double kg)
+    {
+        double free = 0.0;
+        for (int n = 0; n < body.Mass.Length; n++)
+            if (HoldsWater(body, n)) free += FreeWater(body, n);
+        if (free <= 0.0 || kg <= 0.0) return (0.0, 0.0);
+        double share = Math.Min(1.0, kg / free), takenKg = 0.0, takenJ = 0.0;
+        for (int n = 0; n < body.Mass.Length; n++)
+        {
+            if (!HoldsWater(body, n)) continue;
+            double take = FreeWater(body, n) * share;
+            if (take <= 0.0) continue;
+            double j = JoulesOf(w, body, n, take);
+            AddMass(w, body, n, -take, -j);
+            body.WaterKg[n] -= take;
+            takenKg += take;
+            takenJ += j;
+        }
+        return (takenKg, takenJ);
+    }
+
+    /// <summary>Adds water carrying <paramref name="joules"/> to the watery layers, by their mass.</summary>
+    public static void AddWater(World w, Body body, double kg, double joules)
+    {
+        double total = 0.0;
+        for (int n = 0; n < body.Mass.Length; n++)
+            if (HoldsWater(body, n)) total += body.Mass[n];
+        if (total <= 0.0) { AddMass(w, body, 0, kg, joules); body.WaterKg[0] += kg; return; }
+        for (int n = 0; n < body.Mass.Length; n++)
+        {
+            if (!HoldsWater(body, n)) continue;
+            double f = body.Mass[n] / total;
+            AddMass(w, body, n, kg * f, joules * f);
+            body.WaterKg[n] += kg * f;
+        }
     }
 
     /// <summary>Saturation vapour pressure of water, Pa (Magnus over water, good from -40 to 60 °C).</summary>
