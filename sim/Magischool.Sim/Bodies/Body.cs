@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using Magischool.Sim.Perception;
 
 namespace Magischool.Sim.Bodies;
 
@@ -111,6 +113,18 @@ public sealed class Body
     /// <summary>Work it has done (walking, climbing) that its metabolism still has to pay for, J of fuel.</summary>
     public double PendingWorkJ;
 
+    /// <summary>The way it faces, -1 to 1 in x and y: the way it last stepped or turned. Its eyes look this way.</summary>
+    public int FacingX, FacingY = 1;
+
+    /// <summary>
+    /// The luminance its eyes are adapted to, cd/m² (0 until it first looks about): they adapt to
+    /// brighter surroundings within a second and to darker ones over many minutes.
+    /// </summary>
+    public double Adaptation;
+
+    /// <summary>What it has seen and heard, in the order it first noticed each (see <see cref="PerceptionSystem"/>).</summary>
+    public List<Percept> Percepts { get; } = new();
+
     // Readouts from the last tick: not state, never saved or hashed.
     public double MetabolicW { get; internal set; }
     public double ShiverW { get; internal set; }
@@ -166,6 +180,12 @@ public sealed class Body
             return Conscious ? best : 0.0;
         }
     }
+
+    /// <summary>
+    /// How well it hears, against a healthy pair of ears (1): each ear adds as much as it is whole,
+    /// so with one ear the quietest sound it hears is 3 dB louder. Asleep it still hears, enough to be woken.
+    /// </summary>
+    public double Hearing => Alive && !HeartStopped && BrainFunction > 0.5 && (Conscious || Asleep) ? FunctionLevel(PartFunction.Ear) : 0.0;
 
     /// <summary>Whether the spine carries the brain's orders down to the body: every spinal part sound enough.</summary>
     public bool SpineIntact
@@ -295,6 +315,8 @@ public sealed class Body
             foreach (double v in array) w.Write(v);
         foreach (double v in Scalars()) w.Write(v);
         w.Write(HeartStopped); w.Write(Alive); w.Write((byte)Cause); w.Write(Asleep);
+        w.Write(Percepts.Count);
+        foreach (var p in Percepts) p.Write(w);
     }
 
     internal static Body Read(BinaryReader r)
@@ -326,16 +348,19 @@ public sealed class Body
         body.Alive = r.ReadBoolean();
         body.Cause = (CauseOfDeath)r.ReadByte();
         body.Asleep = r.ReadBoolean();
+        int percepts = r.ReadInt32();
+        for (int k = 0; k < percepts; k++) body.Percepts.Add(Percept.Read(r));
         return body;
     }
 
-    private const int ScalarCount = 27;
+    private const int ScalarCount = 30;
 
     private double[] Scalars() => new[]
     {
         BloodKg, BloodTemperature, GutCarbKg, GutCarbJ, GutWaterKg, GutWaterJ, GlycogenKg, GlycogenJ, FatJ,
         OxygenKg, OxygenJ, CarbonDioxideKg, CarbonDioxideJ, BladderKg, BladderJ, SpillKg, SpillJ,
         KineticJ, FallSpeed, FallTravel, BrainHypoxia, SleepPressure, ClothingClo, PendingWorkJ, StepX, StepY, Toxins,
+        FacingX, FacingY, Adaptation,
     };
 
     private void SetScalars(double[] s)
@@ -344,5 +369,6 @@ public sealed class Body
         (OxygenKg, OxygenJ, CarbonDioxideKg, CarbonDioxideJ, BladderKg, BladderJ, SpillKg, SpillJ) = (s[9], s[10], s[11], s[12], s[13], s[14], s[15], s[16]);
         (KineticJ, FallSpeed, FallTravel, BrainHypoxia, SleepPressure, ClothingClo, PendingWorkJ) = (s[17], s[18], s[19], s[20], s[21], s[22], s[23]);
         (StepX, StepY, Toxins) = ((int)s[24], (int)s[25], s[26]);
+        (FacingX, FacingY, Adaptation) = ((int)s[27], (int)s[28], s[29]);
     }
 }

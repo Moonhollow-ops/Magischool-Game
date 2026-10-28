@@ -26,6 +26,9 @@ owner answers; answered questions move to [DECISIONS.md](DECISIONS.md).
    and can be found later.
 7. **Should the player see NPC awareness?** Default: no exact cones, only
    hints (an NPC turns their head, a sound icon), so you learn to read people.
+7b. **Can casting itself be seen or heard?** Default: no. Gathering ether is silent and dark;
+   only what a spell does to the world (a bolt's glow, a strike's bang, ice, fire) gives it away.
+   Words, gestures or a caster's glow would make casting itself a tell.
 8. **How do the hunting wizards arrive?** Default: a hidden suspicion score
    per witness and per place, rising into rumours, then an investigation, then
    the team.

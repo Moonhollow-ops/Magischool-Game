@@ -20,6 +20,8 @@ public enum Tissue : byte
     Gut,
     Eye,
     Tooth,
+    /// <summary>The ear's flap and canal: elastic cartilage under skin, and the cochlea that hears in the bone behind.</summary>
+    Cartilage,
 }
 
 /// <summary>
@@ -74,6 +76,8 @@ public enum PartFunction : byte
     Foot,
     /// <summary>Carries the nerves: broken, the body below can't move and the diaphragm stops.</summary>
     Spine,
+    /// <summary>Hears. Two ears hear about 3 dB better than one.</summary>
+    Ear,
 }
 
 /// <summary>
@@ -303,6 +307,8 @@ public static class BodyPlans
         new("eye", 1010, 4000, 0.58, 5.0e-4, 0.90, 0.0, 60),
         // Enamel over dentin.
         new("tooth", 2200, 1200, 0.90, 0.0, 0.10, 0.0, 400),
+        // Elastic cartilage (IT'IS tissue database); it has no blood vessels of its own.
+        new("cartilage", 1100, 3568, 0.49, 0.0, 0.75, 0.0, 250),
     };
 
     public static TissueDef Of(Tissue t) => Tissues[(int)t];
@@ -346,6 +352,8 @@ public static class BodyPlans
             new("teeth", "head", 3, PartShape.Sphere, 0.0, new[] { (Tissue.Tooth, 0.02) }, 0.0, PartFunction.Teeth, Internal: true),
             new("left eye", "head", 3, PartShape.Sphere, 0.0004, new[] { (Tissue.Eye, 0.0075) }, 0.0002, PartFunction.Eye),
             new("right eye", "head", 3, PartShape.Sphere, 0.0004, new[] { (Tissue.Eye, 0.0075) }, 0.0002, PartFunction.Eye),
+            new("left ear", "head", 3, PartShape.Cylinder, 0.003, new[] { (Tissue.Skin, 0.004), (Tissue.Cartilage, 0.006) }, 0.0005, PartFunction.Ear),
+            new("right ear", "head", 3, PartShape.Cylinder, 0.003, new[] { (Tissue.Skin, 0.004), (Tissue.Cartilage, 0.006) }, 0.0005, PartFunction.Ear),
             new("left upper arm", "chest", 2, PartShape.Cylinder, 0.07, Limb(0.13, 0.4, 1.1, 0.25), 0.01),
             new("left forearm", "left upper arm", 2, PartShape.Cylinder, 0.06, Limb(0.1, 0.3, 0.8, 0.2), 0.01),
             new("left hand", "left forearm", 2, PartShape.Cylinder, 0.045, Limb(0.07, 0.05, 0.2, 0.12), 0.0048, PartFunction.Hand),

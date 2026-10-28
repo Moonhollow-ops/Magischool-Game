@@ -4,6 +4,53 @@ The running record of what has been decided, newest first. Anything here is
 settled until the owner says otherwise; open questions live in
 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
 
+## 2026-10-28: Perception is light and sound
+
+The owner asked to keep building world physics; layer 10 is the senses, because magic must stay
+secret and being seen or heard is how it gets out. The owner defers the physics to Claude. Nothing
+is noticed by a rule: it is noticed because enough light or sound reached a working eye or ear.
+
+- **Light** is computed from the world each tick and moves no energy (the visible share of a
+  fire's heat is under a thousandth; radiant heat between distant surfaces is still the thermal
+  layer's to add). Hot matter glows by Planck's law weighted by the CIE 1931 luminosity curve, so
+  iron at the Draper point (798 K) is just visible in the dark and a tungsten filament gives
+  15 lm/W. A flame radiates 30% of its heat (from the combustion layer's real burning rate) as
+  soot at 1400 K: a burning log face is about 38 cd, 9.5 lux at 2 m. A bolt in flight shines as a
+  30 cm ball of flame at 1500 K. The sky lights every place by how much of it the place sees
+  (32 cosine-weighted rays); `Simulation.SkyIlluminanceLux` is saved, 10,000 lux by default
+  (`SetSkyLight` sets it until world time turns the day). Light travels in straight lines by
+  the inverse square, an opaque solid blocks the share of a tile it fills, water, ice and
+  crystal dim it by Beer–Lambert (0.5, 2 and 0.1 per metre), and smoke by its soot at 8.7 m²/g.
+- **Sight**: a thing is seen when the luminance difference it makes passes the eye's threshold
+  for its adaptation and size: Weber's 1.5% by day rising as the square root of the dark below
+  (de Vries–Rose), and Ricco's summation area (0.2° by day, 1° in the dark) for small targets.
+  Bodies and walls reflect 30% and stand out by half of that; flames, embers and bolts show their
+  own luminance. Eyes look the way the body faces, 100° to either side (bodies face where they
+  last stepped, or turn with `FaceBody`). They adapt to brighter surroundings within a second and
+  to darker over about ten minutes, so walking from daylight into a dark room leaves a body blind
+  at first. Shut eyes see nothing.
+- **Sound** is made by the physics already there, as a small share of the energy each event moves,
+  in three octave bands: fire noise (5e-9 of its heat, calibrated to a campfire's 65 dB at 2 m),
+  footsteps (60 dB at 1 m), anything hard landing (1e-4 of its kinetic energy), a bond breaking
+  (1e-5 of the strain energy at its strength), a crystal rupturing, a fireball striking (1% of the
+  heat dumped into the air: 2 MJ is a small bomb) and a bolt's rush (Curle's dipole law). The
+  energy is already in the heat the event leaves, because sound dies into heat within a second,
+  so the audit is untouched.
+- **Hearing**: sound reaches an ear straight through (inverse square, ISO 9613-1 air absorption,
+  and each wall's mass-law loss, 20·log10(m″·f) − 47 dB), round corners along the shortest way
+  through the air (Maekawa's diffraction for the detour, at most 25 dB), and by echo in a closed
+  room (Sabine's 4W/R, decaying with distance by Barron's revised theory; a space a quarter open
+  to the sky or more holds none). A sound is heard where, in some band, it passes both the
+  threshold of hearing and everything else heard at the time, so a fire masks a footstep. Each
+  ear adds what it is worth (humans now have two ears of skin and cartilage). A sleeper wakes to
+  55 dB(A) standing 10 dB over the background.
+- **Memory**: what a body notices goes into `Body.Percepts` (bodies, bolts, fires, glows,
+  sounds), with where, when first and last, and how clearly, 48 at most. Saved and hashed. Seeing
+  a bolt fly is seeing magic; what a witness makes of the rest comes later.
+- Not yet: daylight's heat and the sun's direction, light bouncing off walls, glare, colour, a
+  body hiding another, sound in water or through the ground, flanking round walls, a source
+  room's echo through its walls, hearing damage from loud sounds, and voices.
+
 ## 2026-10-28: Player controls, and physics first
 
 The owner tried the viewer and set the controls the game will use: left click

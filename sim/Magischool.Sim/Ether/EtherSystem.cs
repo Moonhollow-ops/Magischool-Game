@@ -1,6 +1,7 @@
 using System;
 using Magischool.Sim.Core;
 using Magischool.Sim.Materials;
+using Magischool.Sim.Perception;
 using Magischool.Sim.Thermal;
 
 namespace Magischool.Sim.Ether;
@@ -252,6 +253,7 @@ public sealed class EtherSystem : ISimSystem
         grid.Ether[i] -= charge;
         EnergyAudit.AddJoules(grid, i, charge, 0.0);
         if ((grid.Structure[i] & WorldGrid.LooseBit) == 0) Ruptures++;
+        Acoustics.Crack(sim, i, SoundKind.Shatter);
         grid.BreakBonds(i);
         sim.Activity.WakeAround(x, y, z);
         DischargedJ += charge;

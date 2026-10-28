@@ -4,6 +4,7 @@ using Magischool.Sim.Combustion;
 using Magischool.Sim.Core;
 using Magischool.Sim.Fluids;
 using Magischool.Sim.Materials;
+using Magischool.Sim.Perception;
 using Magischool.Sim.Thermal;
 
 namespace Magischool.Sim.Structure;
@@ -135,6 +136,8 @@ public sealed class StructureSystem : ISimSystem
             var (x, y, z) = grid.Coordinates(j);
             if (!CanFallInto(grid, i, j))
             {
+                // Landing: the blow on the ground is heard.
+                if (grid.FallSpeed[i] > 0.0) Acoustics.Impact(sim, i, 0.5 * grid.Mass[i] * grid.FallSpeed[i] * grid.FallSpeed[i]);
                 grid.FallSpeed[i] = 0.0;
                 grid.FallTravel[i] = 0.0;
                 continue;
@@ -253,6 +256,7 @@ public sealed class StructureSystem : ISimSystem
         var grid = sim.Grid;
         grid.Structure[bond.A] = (byte)(grid.Structure[bond.A] | (1 << bond.Axis));
         BondsBroken++;
+        Acoustics.Crack(sim, grid.Mass[bond.A] <= grid.Mass[bond.B] ? bond.A : bond.B);
         _seeds.Add(bond.A);
         _seeds.Add(bond.B);
         _visited[bond.A] = 0;

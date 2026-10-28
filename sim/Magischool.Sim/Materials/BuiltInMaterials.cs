@@ -54,6 +54,7 @@ public static class BuiltInMaterials
             StrengthLossStartK = 873f, StrengthLossEndK = 1473f, MeltingPoint = 1500f, LatentHeatFusion = 400_000f,
             MeltsInto = Magma,
             EtherPermittivity = 4f, EtherConductivity = 0.4f, EtherBreakdown = 5e8f,
+            SoundAbsorption = 0.02f,
         },
         new()
         {
@@ -61,6 +62,7 @@ public static class BuiltInMaterials
             Density = 1500f, SpecificHeat = 800f, ThermalConductivity = 0.5f,
             TensileStrength = 0.01f, CompressiveStrength = 0.1f, YoungsModulus = 0.05f,
             EtherPermittivity = 6f, EtherConductivity = 0.3f, EtherBreakdown = 5e8f,
+            SoundAbsorption = 0.4f,
         },
         new()
         {
@@ -76,6 +78,7 @@ public static class BuiltInMaterials
                 new(CarbonDioxide, 1.6056f), new(Steam, 0.5466f), new(Smoke, 0.015f),
             },
             EtherPermittivity = 5f, EtherConductivity = 0.2f, EtherBreakdown = 2e8f,
+            SoundAbsorption = 0.1f,
         },
         new()
         {
@@ -86,6 +89,7 @@ public static class BuiltInMaterials
             StrengthLossStartK = 673f, StrengthLossEndK = 1473f, MeltingPoint = 1811f, LatentHeatFusion = 247_000f,
             MeltsInto = MoltenIron,
             EtherPermittivity = 0.5f, EtherConductivity = 0.0005f,
+            SoundAbsorption = 0.03f,
         },
         new()
         {
@@ -96,6 +100,7 @@ public static class BuiltInMaterials
             StrengthLossStartK = 373f, StrengthLossEndK = 600.6f, MeltingPoint = 600.6f, LatentHeatFusion = 23_000f,
             MeltsInto = MoltenLead,
             EtherPermittivity = 0.2f, EtherConductivity = 0.0001f,
+            SoundAbsorption = 0.03f,
         },
         new()
         {
@@ -106,6 +111,7 @@ public static class BuiltInMaterials
             FreezesInto = Ice, BoilsInto = Steam,
             Potable = true,
             EtherPermittivity = 10f, EtherConductivity = 0.5f,
+            LightExtinction = 0.5f, SoundAbsorption = 0.01f,
         },
         new()
         {
@@ -115,6 +121,7 @@ public static class BuiltInMaterials
             StrengthLossStartK = 253f, StrengthLossEndK = 273.15f, MeltingPoint = 273.15f, LatentHeatFusion = 334_000f,
             MeltsInto = Water,
             EtherPermittivity = 8f, EtherConductivity = 0.4f, EtherBreakdown = 1e8f,
+            LightExtinction = 2f, SoundAbsorption = 0.02f,
         },
         new()
         {
@@ -131,6 +138,7 @@ public static class BuiltInMaterials
             MeltingPoint = 600.6f, LatentHeatFusion = 23_000f,
             FreezesInto = Lead,
             EtherPermittivity = 0.2f, EtherConductivity = 0.0001f,
+            SoundAbsorption = 0.03f,
         },
         new()
         {
@@ -139,6 +147,7 @@ public static class BuiltInMaterials
             MeltingPoint = 1811f, LatentHeatFusion = 247_000f,
             FreezesInto = Iron,
             EtherPermittivity = 0.5f, EtherConductivity = 0.0005f,
+            SoundAbsorption = 0.03f,
         },
         new()
         {
@@ -147,6 +156,7 @@ public static class BuiltInMaterials
             MeltingPoint = 1500f, LatentHeatFusion = 400_000f,
             FreezesInto = Stone,
             EtherPermittivity = 6f, EtherConductivity = 1f,
+            SoundAbsorption = 0.03f,
         },
         new()
         {
@@ -165,6 +175,7 @@ public static class BuiltInMaterials
             // they add almost nothing to pressure (a huge molar mass), but they do weigh the air down.
             Key = Smoke, Name = "Smoke", Phase = Phase.Gas, Glyph = '.', Color = 0x3C3C3C,
             Density = 1.2f, SpecificHeat = 700f, ThermalConductivity = 0.026f, MolarMass = 1.0f,
+            MassExtinction = 8700f,
         },
         new()
         {
@@ -176,6 +187,7 @@ public static class BuiltInMaterials
             StrengthLossStartK = 1273f, StrengthLossEndK = 1873f, MeltingPoint = 1986f, LatentHeatFusion = 156_000f,
             MeltsInto = MoltenCrystal,
             EtherPermittivity = 40f, EtherConductivity = 2f, EtherBreakdown = 1e7f,
+            LightExtinction = 0.1f, SoundAbsorption = 0.02f,
         },
         new()
         {
@@ -186,6 +198,7 @@ public static class BuiltInMaterials
             MeltingPoint = 1986f, LatentHeatFusion = 156_000f,
             FreezesInto = Crystal,
             EtherPermittivity = 40f, EtherConductivity = 2f,
+            LightExtinction = 1f, SoundAbsorption = 0.03f,
         },
         new()
         {
@@ -197,6 +210,7 @@ public static class BuiltInMaterials
             Density = 3200f, SpecificHeat = 800f, ThermalConductivity = 5f,
             TensileStrength = 30f, CompressiveStrength = 300f, YoungsModulus = 60f,
             EtherPermittivity = 100f, EtherConductivity = 3f, EtherWellPotential = 3e7f,
+            SoundAbsorption = 0.02f,
         },
         new()
         {
@@ -210,6 +224,7 @@ public static class BuiltInMaterials
             CombustionProducts = new CombustionProduct[] { new(CarbonDioxide, 0.97712f), new(Steam, 0.73333f) },
             Edible = true,
             EtherPermittivity = 5f, EtherConductivity = 0.2f, EtherBreakdown = 2e8f,
+            SoundAbsorption = 0.5f,
         },
         new()
         {
@@ -221,6 +236,7 @@ public static class BuiltInMaterials
             MeltingPoint = 273.15f, LatentHeatFusion = 334_000f,
             FreezesInto = FrozenBlood,
             EtherPermittivity = 10f, EtherConductivity = 0.5f,
+            SoundAbsorption = 0.01f,
         },
         new()
         {
@@ -230,6 +246,7 @@ public static class BuiltInMaterials
             StrengthLossStartK = 253f, StrengthLossEndK = 273.15f, MeltingPoint = 273.15f, LatentHeatFusion = 334_000f,
             MeltsInto = Blood,
             EtherPermittivity = 8f, EtherConductivity = 0.4f, EtherBreakdown = 1e8f,
+            SoundAbsorption = 0.02f,
         },
     };
 

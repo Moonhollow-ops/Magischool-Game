@@ -282,6 +282,35 @@ public sealed class CombustionSystem : ISimSystem
     }
 
     /// <summary>
+    /// Heat the flame at one site of fuel tile <paramref name="f"/> gives off, W (site as in
+    /// <see cref="WorldGrid.Flame"/>: 0 burning in the tile's own gas, 1 to 6 on its faces): the
+    /// fuel's heat of combustion at the rate that site burns in the air it has now. Light and
+    /// noise are read from it; the per-tick caps that keep a tile from running dry are left out.
+    /// </summary>
+    public static double FlamePowerW(WorldGrid grid, int f, int site)
+    {
+        var def = grid.Materials[grid.Material[f]];
+        if (def.HeatOfCombustion <= 0f || (grid.Flame[f] & (1 << site)) == 0) return 0.0;
+        int g = f;
+        if (site > 0)
+        {
+            var (x, y, z) = grid.Coordinates(f);
+            var (dx, dy, dz) = Faces[site - 1];
+            if (!grid.InBounds(x + dx, y + dy, z + dz)) return 0.0;
+            g = grid.Index(x + dx, y + dy, z + dz);
+        }
+        var oxidizer = EnergyAudit.OxidizerOf(grid.Materials);
+        if (grid.FreeVolume(g) < FluidSystem.GasLockFraction * WorldGrid.TileVolumeM3) return 0.0;
+        double air = grid.GasMass[grid.Materials.GasIndexOf(grid.Materials.Id(oxidizer.Key))][g];
+        double total = grid.TotalGasMass(g);
+        if (!(air > 0.0) || !(total > 0.0)) return 0.0;
+        double strength = Math.Min(1.0, (air * oxidizer.OxygenFraction / total - ExtinctionOxygenFraction) / (oxidizer.OxygenFraction - ExtinctionOxygenFraction));
+        if (!(strength > 0.0)) return 0.0;
+        double area = site == 0 ? InteriorArea(grid, f) : WorldGrid.TileFaceAreaM2;
+        return BurnRateKgPerM2S * area * strength * def.HeatOfCombustion;
+    }
+
+    /// <summary>
     /// How well the gas in tile g feeds a flame: 1 in fresh air, falling to 0 at
     /// <see cref="ExtinctionOxygenFraction"/>; 0 or less where nothing can burn.
     /// </summary>

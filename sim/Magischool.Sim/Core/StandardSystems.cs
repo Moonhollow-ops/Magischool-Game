@@ -3,6 +3,7 @@ using Magischool.Sim.Combustion;
 using Magischool.Sim.Ether;
 using Magischool.Sim.Fluids;
 using Magischool.Sim.Magic;
+using Magischool.Sim.Perception;
 using Magischool.Sim.Structure;
 using Magischool.Sim.Thermal;
 
@@ -26,6 +27,7 @@ public static class StandardSystems
         new CombustionSystem(),
         new StructureSystem(), // before fluids, so gas and water fill where rubble fell from
         new FluidSystem(openSky, skyTemperatureK), // after phase changes, so fresh steam moves the same tick
+        new PerceptionSystem(), // reads the finished tick: sees and hears what the other layers made
         new ActivitySystem(), // always last: decides what sleeps next tick
     };
 }

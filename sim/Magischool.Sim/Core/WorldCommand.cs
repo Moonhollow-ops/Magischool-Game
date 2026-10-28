@@ -33,6 +33,8 @@ public abstract record WorldCommand
             Bodies.DrinkWater.TagValue => Bodies.DrinkWater.ReadFrom(reader),
             Bodies.SetAsleep.TagValue => Bodies.SetAsleep.ReadFrom(reader),
             Magic.CastGraft.TagValue => Magic.CastGraft.ReadFrom(reader),
+            Perception.FaceBody.TagValue => Perception.FaceBody.ReadFrom(reader),
+            Perception.SetSkyLight.TagValue => Perception.SetSkyLight.ReadFrom(reader),
             _ => throw new InvalidDataException($"Unknown command tag {tag}."),
         };
     }

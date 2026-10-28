@@ -11,6 +11,8 @@ public struct Projectile
     public double VX, VY, VZ;
     /// <summary>Energy it carries, J, all of it heat where it strikes.</summary>
     public double Joules;
+    /// <summary>Which bolt it is, so a witness can follow it.</summary>
+    public long Id;
     /// <summary>Seconds it has flown; past <see cref="SpellSystem.MaxFlightSeconds"/> it gutters out where it is.</summary>
     public double Age;
 }
