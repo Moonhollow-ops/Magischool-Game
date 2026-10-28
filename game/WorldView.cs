@@ -6,6 +6,7 @@ using Magischool.Sim.Core;
 using Magischool.Sim.Fluids;
 using Magischool.Sim.Magic;
 using Magischool.Sim.Materials;
+using Magischool.Sim.Perception;
 using Magischool.Sim.Persistence;
 using Magischool.Sim.Structure;
 using Magischool.Sim.WorldGen;
@@ -23,7 +24,10 @@ namespace Magischool.Game;
 /// F: fireball at the hovered tile · X: freeze it · V: heat it · G: pour charge into it ·
 /// B: conjure 5 kg of the brush material into it
 /// Bodies: P: a student stands on the hovered tile (and becomes the one you steer) ·
-/// arrow keys: they step · T: they eat or drink from the hovered tile · Z: they sleep or wake
+/// arrow keys: they step · T: they eat or drink from the hovered tile · Z: they sleep or wake ·
+/// O: they turn to face the hovered tile
+/// Perception: L: light view (how brightly each tile is lit) · N: day, full moon, starlight ·
+/// sounds of the last action ring where they were made
 /// F5: save · F9: load · R: new seed · Hover a tile to read its contents
 /// </summary>
 public partial class WorldView : Node2D
@@ -43,6 +47,9 @@ public partial class WorldView : Node2D
     private bool _airOverlay;
     private bool _stressOverlay;
     private bool _etherOverlay;
+    private bool _lightOverlay;
+    /// <summary>Sounds made during the last action, loudest kept, to draw where they were.</summary>
+    private readonly System.Collections.Generic.List<SoundEvent> _heard = new();
     private string _status = "";
     private int _hoverX = -1, _hoverY = -1;
     private int _casterX = 2, _casterY = 2, _casterZ = TestRoomGenerator.FloorZ;
@@ -73,7 +80,14 @@ public partial class WorldView : Node2D
     /// <summary>Every player action spends world time. Commands queued by the action apply on the first tick.</summary>
     private void SpendTicks(int ticks)
     {
-        _sim.Step(ticks);
+        _heard.Clear();
+        for (int t = 0; t < ticks; t++)
+        {
+            _sim.Step();
+            // Every step, thud, crack and bang (a fire's own roar is heard but not drawn).
+            foreach (var sound in _sim.Sounds)
+                if (_heard.Count < 200) _heard.Add(sound);
+        }
         QueueRedraw();
     }
 
@@ -106,6 +120,18 @@ public partial class WorldView : Node2D
             case Key.A: _airOverlay = !_airOverlay; break;
             case Key.S: _stressOverlay = !_stressOverlay; break;
             case Key.M: _etherOverlay = !_etherOverlay; break;
+            case Key.L: _lightOverlay = !_lightOverlay; break;
+            case Key.N:
+                double sky = _sim.SkyIlluminanceLux > 1.0 ? LightField.FullMoonLux
+                    : _sim.SkyIlluminanceLux > 0.01 ? LightField.StarlightLux : LightField.OvercastDayLux;
+                _sim.Enqueue(new SetSkyLight(sky));
+                SpendTicks(TicksPerWaitAction);
+                _status = sky >= 1000 ? "Day" : sky > 0.01 ? "Full moon" : "Starlight";
+                break;
+            case Key.O when Steered() is { } turner && _sim.Grid.InBounds(_hoverX, _hoverY, _z):
+                _sim.Enqueue(new FaceBody(turner.Id, Math.Sign(_hoverX - turner.X), Math.Sign(_hoverY - turner.Y)));
+                SpendTicks(TicksPerWaitAction);
+                break;
             case Key.R: NewWorld($"seed-{Time.GetTicksMsec()}"); break;
             case Key.C when _sim.Grid.InBounds(_hoverX, _hoverY, _z):
                 (_casterX, _casterY, _casterZ) = (_hoverX, _hoverY, _z);
@@ -226,6 +252,7 @@ public partial class WorldView : Node2D
     public override void _Draw()
     {
         var grid = _sim.Grid;
+        var lights = _lightOverlay ? LightField.AllSources(_sim) : null;
         for (int y = 0; y < grid.Height; y++)
         for (int x = 0; x < grid.Width; x++)
         {
@@ -234,6 +261,7 @@ public partial class WorldView : Node2D
             if (!_heatOverlay && SmokeGas >= 0) color = color.Lerp(SmokeColor, SmokeShade(grid, i));
             if (_stressOverlay && grid.HasCondensed(i) && _materials[grid.Material[i]].Phase == Phase.Solid) color = StressColor(grid, i);
             if (_etherOverlay) color = EtherColor(grid.EtherPotential(i));
+            if (lights != null) color = Lit(color, LightField.Illuminance(_sim, lights, x + 0.5, y + 0.5, _z + 0.5));
             DrawRect(new Rect2(x * TileSize, y * TileSize, TileSize - 1, TileSize - 1), color);
             if (grid.Flame[i] != 0)
                 DrawCircle(new Vector2((x + 0.5f) * TileSize, (y + 0.5f) * TileSize), TileSize * 0.22f, FlameColor);
@@ -249,20 +277,24 @@ public partial class WorldView : Node2D
             bool head = anatomy.BrainPart >= 0 && _z - body.Z == anatomy.Parts[anatomy.OuterOf(anatomy.BrainPart)].Dz;
             DrawCircle(centre, TileSize * (body.IsRemains ? 0.2f : head ? 0.3f : 0.4f), color);
             if (body.Id == _bodyId) DrawArc(centre, TileSize * 0.48f, 0f, MathF.Tau, 16, Colors.White, 1.5f);
+            // Which way its eyes look.
+            if (!body.IsRemains && body.Alive)
+                DrawLine(centre, centre + new Vector2(body.FacingX, body.FacingY).Normalized() * TileSize * 0.5f, Colors.Black, 2f);
         }
         foreach (var bolt in _sim.Projectiles)
             if ((int)Math.Floor(bolt.Z) == _z)
                 DrawCircle(new Vector2((float)bolt.X * TileSize, (float)bolt.Y * TileSize), TileSize * 0.3f, FlameColor);
         if (_airOverlay) DrawAir(grid);
+        DrawSounds();
 
         var font = ThemeDB.FallbackFont;
         float hudY = grid.Height * TileSize + 22;
-        string mode = (_etherOverlay ? "ether" : _stressOverlay ? "stress" : _heatOverlay ? "heat" : "materials") + (_airOverlay ? " + air" : "");
+        string mode = (_etherOverlay ? "ether" : _stressOverlay ? "stress" : _heatOverlay ? "heat" : "materials") + (_airOverlay ? " + air" : "") + (_lightOverlay ? " + light" : "");
         DrawString(font, new Vector2(4, hudY),
-            $"seed '{_sim.Seed}'   tick {_sim.Tick} ({_sim.ElapsedSeconds:0.0} s)   z {_z}/{grid.Depth - 1}   view {mode}   brush {_materials[_brush].Name}",
+            $"seed '{_sim.Seed}'   tick {_sim.Tick} ({_sim.ElapsedSeconds:0.0} s)   z {_z}/{grid.Depth - 1}   view {mode}   sky {_sim.SkyIlluminanceLux:0.###} lux   brush {_materials[_brush].Name}",
             fontSize: 16);
         DrawString(font, new Vector2(4, hudY + 22),
-            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | S stress | M ether | C caster F fireball X freeze V heat G charge B conjure | P student, arrows step, T eat/drink, Z sleep, Y grow an eye | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
+            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | S stress | M ether | L light | N day/moon/stars | C caster F fireball X freeze V heat G charge B conjure | P student, arrows step, O face, T eat/drink, Z sleep, Y grow an eye | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
             fontSize: 13, modulate: new Color(0.7f, 0.7f, 0.7f));
         if (_status.Length > 0)
             DrawString(font, new Vector2(4, hudY + 42), _status, fontSize: 13, modulate: new Color(1f, 0.85f, 0.4f));
@@ -270,7 +302,10 @@ public partial class WorldView : Node2D
             DrawString(font, new Vector2(4, hudY + 62), Describe(grid, grid.Index(_hoverX, _hoverY, _z)), fontSize: 13);
         var shown = BodyAt(_hoverX, _hoverY) ?? Steered();
         if (shown != null)
+        {
             DrawString(font, new Vector2(4, hudY + 82), DescribeBody(shown), fontSize: 13, modulate: new Color(0.95f, 0.85f, 0.75f));
+            DrawString(font, new Vector2(4, hudY + 102), DescribeSenses(shown), fontSize: 13, modulate: new Color(0.75f, 0.85f, 0.95f));
+        }
     }
 
     /// <summary>One line on what a tile holds: its solid or liquid, its gases, temperature and pressure.</summary>
@@ -294,7 +329,8 @@ public partial class WorldView : Node2D
         float load = Structure()?.UtilisationAt(i) ?? 0f;
         string stress = load > 0f ? $"  load {load:P0} of strength" : "";
         string ether = $"  ether {grid.EtherPotential(i) / 1e6:0.##} MJ/m³";
-        return $"({x},{y},{z})  {held}{gases}  {celsius:0.0} °C{air}  {FluidSystem.PressureAt(grid, i) / 1000:0.###} kPa{burning}{structure}{stress}{ether}";
+        double lux = LightField.Illuminance(_sim, LightField.AllSources(_sim), x + 0.5, y + 0.5, z + 0.5);
+        return $"({x},{y},{z})  {held}{gases}  {celsius:0.0} °C{air}  {FluidSystem.PressureAt(grid, i) / 1000:0.###} kPa{burning}{structure}{stress}{ether}  light {lux:0.###} lux";
     }
 
     private Body? BodyAt(int x, int y)
@@ -328,6 +364,52 @@ public partial class WorldView : Node2D
         return $"Student {b.Id} {state}  core {b.BloodTemperature - 273.15:0.0} °C  skin {b.MeanSkinTemperature - 273.15:0.0} °C  " +
                $"{b.MetabolicW:0} W  oxygen {b.OxygenFraction:P0}  blood {b.BloodFraction:P0}  hunger {b.Hunger:P0}  thirst {b.Thirst:P0}  fatigue {b.Fatigue:P0}" +
                $"{(b.ShiverW > 1 ? "  shivering" : "")}{(b.SweatKgPerS > 1e-6 ? "  sweating" : "")}{injury}{body}";
+    }
+
+    /// <summary>One line on what a body has noticed lately: the last few things it saw or heard, newest first.</summary>
+    private string DescribeSenses(Body b)
+    {
+        if (b.IsRemains) return "";
+        var recent = new System.Collections.Generic.List<Percept>(b.Percepts);
+        recent.Sort((p, q) => q.LastTick.CompareTo(p.LastTick));
+        var text = new System.Text.StringBuilder($"Sight {b.Vision:P0}, hearing {b.Hearing:P0}, eyes adapted to {b.Adaptation:0.####} cd/m².  Noticed: ");
+        int shown = 0;
+        foreach (var p in recent)
+        {
+            if (shown++ == 5) break;
+            double ago = (_sim.Tick - p.LastTick) * Simulation.SecondsPerTick;
+            string what = p.Kind switch
+            {
+                PerceptKind.Body => $"saw body {p.Subject}",
+                PerceptKind.Bolt => "saw a bolt fly",
+                PerceptKind.Fire => "saw fire",
+                PerceptKind.Glow => "saw a glow",
+                _ => $"heard {((SoundKind)p.Detail).ToString().ToLowerInvariant()} {p.Level:0} dB(A)",
+            };
+            text.Append($"{what} at ({p.X},{p.Y},{p.Z}) {ago:0.#} s ago; ");
+        }
+        if (shown == 0) text.Append("nothing");
+        return text.ToString();
+    }
+
+    /// <summary>Rings where the last action's sounds were made, wider for louder, on this level.</summary>
+    private void DrawSounds()
+    {
+        foreach (var sound in _heard)
+        {
+            if ((int)Math.Floor(sound.Z) != _z) continue;
+            // Sound power level, dB re 1 pW: a footstep about 70, a fireball's strike about 170.
+            double level = 10.0 * Math.Log10(Math.Max(sound.Joules / Simulation.SecondsPerTick, 1e-12) / 1e-12);
+            float radius = TileSize * (float)Math.Clamp((level - 50.0) / 25.0, 0.3, 6.0);
+            DrawArc(new Vector2((float)sound.X * TileSize, (float)sound.Y * TileSize), radius, 0f, MathF.Tau, 24, new Color(1f, 1f, 1f, 0.7f), 1.5f);
+        }
+    }
+
+    /// <summary>A tile's colour dimmed by how brightly it is lit: full at 1000 lux and above, near black by a thousandth.</summary>
+    private static Color Lit(Color color, double lux)
+    {
+        float f = (float)Math.Clamp((Math.Log10(Math.Max(lux, 1e-6)) + 3.0) / 6.0, 0.04, 1.0);
+        return new Color(color.R * f, color.G * f, color.B * f);
     }
 
     private StructureSystem? Structure()

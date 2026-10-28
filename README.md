@@ -42,9 +42,14 @@ Viewer: open `game/project.godot` in Godot 4.7 .NET and press Play.
 | Right click | Set a tile to 1000 K (Shift: 100 K). Debug only: ignores energy conservation |
 | F5 / F9 | Save / load |
 | R | New random seed |
+| L | Toggle the light view: tiles dimmed by how brightly they are lit (full at 1000 lux, near black by 0.001) |
+| N | Sky: day (10,000 lux), full moon, starlight |
+| O | The steered student turns to face the hovered tile |
 | Hover | Read a tile: its solid or liquid, gases, temperature, pressure, whether it is burning, loose or falling, and its load |
 
-Smoke darkens the tiles it is in, and an orange dot marks wood that is burning.
+Smoke darkens the tiles it is in, and an orange dot marks wood that is burning. A black line shows
+which way each student faces, white rings show the sounds the last action made, and the last line
+of the readout lists what the hovered or steered student last saw and heard.
 
 ## Simulation rules
 

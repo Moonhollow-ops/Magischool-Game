@@ -44,6 +44,8 @@ internal static class StateHasher
         using (var writer = new System.IO.BinaryWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true))
         {
             writer.Write(sim.NextBodyId);
+            writer.Write(sim.NextProjectileId);
+            writer.Write(sim.SkyIlluminanceLux);
             foreach (var body in sim.Bodies) body.Write(writer);
         }
         hash = SeedHash.Hash(stream.ToArray(), hash);

@@ -61,6 +61,23 @@ public sealed class Simulation
     /// <summary>Id the next body brought into the world gets.</summary>
     public int NextBodyId { get; internal set; } = 1;
 
+    /// <summary>Id the next bolt cast gets.</summary>
+    public long NextProjectileId { get; internal set; } = 1;
+
+    /// <summary>
+    /// Light falling from the open sky on open ground, lux: about 10,000 under an overcast day,
+    /// 0.25 under a full moon, 0.001 under stars alone. Part of the world state; the day's
+    /// changes come with world time.
+    /// </summary>
+    public double SkyIlluminanceLux { get; internal set; } = Perception.LightField.OvercastDayLux;
+
+    /// <summary>
+    /// Sounds made during the current tick, in the order they were made: what the perception
+    /// layer hears. Cleared at the start of each tick, so after a step it holds that tick's.
+    /// Not part of the world state: a sound is gone within the tick it is heard in.
+    /// </summary>
+    public List<Perception.SoundEvent> Sounds { get; } = new();
+
     /// <summary>
     /// Net matter crystallised out of the ether since this simulation was created, kg: conjured
     /// matter less etherium burned. The world's mass less this never changes.
@@ -91,6 +108,7 @@ public sealed class Simulation
 
     public void Step()
     {
+        Sounds.Clear();
         while (_pending.Count > 0)
         {
             var command = _pending.Dequeue();

@@ -128,6 +128,7 @@ public sealed record CastFireball(int CasterX, int CasterY, int CasterZ, double 
             X = CasterX + 0.5, Y = CasterY + 0.5, Z = CasterZ + 0.5,
             VX = DirX * scale, VY = DirY * scale, VZ = DirZ * scale,
             Joules = joules,
+            Id = sim.NextProjectileId++,
         });
     }
 

@@ -3,6 +3,7 @@ using Magischool.Sim.Bodies;
 using Magischool.Sim.Combustion;
 using Magischool.Sim.Core;
 using Magischool.Sim.Materials;
+using Magischool.Sim.Perception;
 using Magischool.Sim.Thermal;
 
 namespace Magischool.Sim.Magic;
@@ -78,6 +79,7 @@ public sealed class SpellSystem : ISimSystem
             here = next;
         }
         bolt.Age += dt;
+        Acoustics.Emit(sim, SoundKind.Whoosh, bolt.X, bolt.Y, bolt.Z, Acoustics.WakeJoules(speed, 2.0 * LightField.BoltRadiusM), bolt.Id);
         if (bolt.Age >= MaxFlightSeconds)
         {
             Gutter(sim, here, bolt.Joules);
@@ -116,6 +118,7 @@ public sealed class SpellSystem : ISimSystem
         }
         Spellcasting.Heat(grid, hit, surface);
         HeatGas(grid, from, flame);
+        Acoustics.Blast(sim, from, flame);
         Wake(sim, hit);
         Wake(sim, from);
     }
@@ -126,12 +129,14 @@ public sealed class SpellSystem : ISimSystem
         double surface = joules * SurfaceShare;
         BodySystem.HeatSkin(sim, body, part, surface);
         HeatGas(sim.Grid, from, joules - surface);
+        Acoustics.Blast(sim, from, joules - surface);
         Wake(sim, from);
     }
 
     private static void Gutter(Simulation sim, int here, double joules)
     {
         HeatGas(sim.Grid, here, joules);
+        Acoustics.Blast(sim, here, joules);
         Wake(sim, here);
     }
 

@@ -16,7 +16,7 @@ namespace Magischool.Sim.Persistence;
 public static class Snapshot
 {
     private const uint Magic = 0x5753474D; // "MGSW"
-    public const ushort FormatVersion = 12;
+    public const ushort FormatVersion = 13;
 
     public static void Save(Simulation sim, Stream stream)
     {
@@ -66,8 +66,10 @@ public static class Snapshot
         {
             writer.Write(bolt.X); writer.Write(bolt.Y); writer.Write(bolt.Z);
             writer.Write(bolt.VX); writer.Write(bolt.VY); writer.Write(bolt.VZ);
-            writer.Write(bolt.Joules); writer.Write(bolt.Age);
+            writer.Write(bolt.Joules); writer.Write(bolt.Age); writer.Write(bolt.Id);
         }
+        writer.Write(sim.NextProjectileId);
+        writer.Write(sim.SkyIlluminanceLux);
         writer.Write(sim.NextBodyId);
         writer.Write(sim.Bodies.Count);
         foreach (var body in sim.Bodies) body.Write(writer);
@@ -133,9 +135,11 @@ public static class Snapshot
             {
                 X = reader.ReadDouble(), Y = reader.ReadDouble(), Z = reader.ReadDouble(),
                 VX = reader.ReadDouble(), VY = reader.ReadDouble(), VZ = reader.ReadDouble(),
-                Joules = reader.ReadDouble(), Age = reader.ReadDouble(),
+                Joules = reader.ReadDouble(), Age = reader.ReadDouble(), Id = reader.ReadInt64(),
             });
         }
+        sim.NextProjectileId = reader.ReadInt64();
+        sim.SkyIlluminanceLux = reader.ReadDouble();
         sim.NextBodyId = reader.ReadInt32();
         int bodies = reader.ReadInt32();
         for (int b = 0; b < bodies; b++) sim.Bodies.Add(Bodies.Body.Read(reader));

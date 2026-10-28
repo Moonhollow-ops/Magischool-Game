@@ -2,6 +2,7 @@ using System;
 using Magischool.Sim.Core;
 using Magischool.Sim.Fluids;
 using Magischool.Sim.Materials;
+using Magischool.Sim.Perception;
 using Magischool.Sim.Thermal;
 
 namespace Magischool.Sim.Bodies;
@@ -194,9 +195,11 @@ public sealed class BodySystem : ISimSystem
         int dx = Math.Clamp(body.StepX, -1, 1), dy = Math.Clamp(body.StepY, -1, 1);
         body.StepX = body.StepY = 0;
 
+        if ((dx != 0 || dy != 0) && body.Conscious) (body.FacingX, body.FacingY) = (dx, dy);
         if ((dx != 0 || dy != 0) && body.Conscious && CanWalk(body) && body.KineticJ == 0.0
             && Supported(grid, body.X, body.Y, body.Z) && !Blocked(grid, body.X, body.Y, body.Z))
         {
+            int x0 = body.X, y0 = body.Y, z0 = body.Z;
             int nx = body.X + dx, ny = body.Y + dy;
             double stepM = WorldGrid.TileSizeM * Math.Sqrt(dx * dx + dy * dy);
             if (Clear(grid, nx, ny, body.Z, h))
@@ -213,6 +216,8 @@ public sealed class BodySystem : ISimSystem
                 TakeHeatFromMuscle(body, lift);
                 ReleasedPotentialJ -= lift;
             }
+            if (body.X != x0 || body.Y != y0 || body.Z != z0)
+                Acoustics.EmitAt(sim, SoundKind.Footstep, grid.Index(body.X, body.Y, body.Z), Acoustics.FootstepJPerKg * kg, body.Id);
         }
 
         if (!Supported(grid, body.X, body.Y, body.Z))
@@ -281,6 +286,7 @@ public sealed class BodySystem : ISimSystem
         double ke = body.KineticJ;
         body.KineticJ = 0.0;
         int feet = grid.Index(body.X, body.Y, body.Z);
+        Acoustics.Impact(sim, feet, ke, body.Id);
         if (Shares(grid, feet).Liquid >= 0.5)
         {
             // Water takes most of a fall into it.
@@ -352,6 +358,7 @@ public sealed class BodySystem : ISimSystem
             grid.FallTravel[i] = 0.0;
             if (!(ke > 0.0)) continue;
             EnergyAudit.AddJoules(grid, i, -ke, 0.0);
+            Acoustics.Impact(sim, i, ke);
             double kg = 0.0;
             for (int p = 0; p < parts.Length; p++)
                 if (!parts[p].Internal && parts[p].Dz == dz) kg += BlockKg(body, p);

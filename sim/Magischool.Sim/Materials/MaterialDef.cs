@@ -99,6 +99,20 @@ public sealed record MaterialDef
     /// <summary>A liquid a body can drink as water.</summary>
     public bool Potable { get; init; }
 
+    // Light and sound (layer 10)
+    /// <summary>
+    /// m⁻¹. Solids and liquids: how fast visible light dies in the material, by Beer–Lambert
+    /// (clear water about 0.5, bubbly ice 2). Infinite means opaque.
+    /// </summary>
+    public float LightExtinction { get; init; } = float.PositiveInfinity;
+    /// <summary>
+    /// m²/kg. Gases: how much visible light a kilogram of the gas spread through the air blocks
+    /// (soot from a flaming fire about 8,700). Zero for a clear gas.
+    /// </summary>
+    public float MassExtinction { get; init; }
+    /// <summary>Share of the sound striking a surface of the material that it absorbs rather than reflects (stone 0.02, soil 0.4).</summary>
+    public float SoundAbsorption { get; init; } = 0.05f;
+
     // Arcane physics (layer 7). The ether is a field of energy that pervades space; matter only
     // changes how much of it a place holds and how freely it moves.
     /// <summary>

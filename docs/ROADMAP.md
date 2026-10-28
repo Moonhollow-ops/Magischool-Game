@@ -16,8 +16,8 @@ cover it, including a determinism check.
 | 7 | Ether field | Arcane charge flows through stone and ruptures an overloaded crystal | Done |
 | 8 | Spells as field inputs | Spells only add heat, force, charge or matter; the frozen pipe bursts with no special code | Done (heat, charge and matter; force later) |
 | 9 | Bodies | A creature with body temperature, wounds and needs reacts to all of the above | Done (first pass, see below) |
-| 10 | Perception | NPC awareness from sight, light, sound and skill; someone notices a spell or its traces | Next |
-| 11 | Ecology | Plants grow, die and rot; simple creatures feed and wander | |
+| 10 | Perception | NPC awareness from sight, light, sound and skill; someone notices a spell or its traces | Done (light and sound; skill later) |
+| 11 | Ecology | Plants grow, die and rot; simple creatures feed and wander | Next |
 | 12 | World time | Day and night, weather, and the city changing while the player is away | |
 
 Perception (10) was added because magic must stay secret: being seen, heard,
@@ -129,4 +129,22 @@ stump bleeds; a head cut off takes the life with it. Parts are data in each
 body, so a mutation can change a layer's tissue, and CastGraft grows a new
 part from ether at 10 MJ a kilogram: a third eye sees when the other two are
 gone. In the viewer, Y grows an eye on the student from the caster.
+
+Layer 10 gives bodies senses. Light comes from flames, glowing matter, bolts in flight and the
+sky, all from real physics: hot matter glows by Planck's law seen through the eye's luminosity
+curve, a flame shines with the soot its burning makes, and light falls off with distance, stops
+at walls and fades in smoke and water. A burning log face lights a face 2 m away to about 9 lux;
+iron at 800 K is a faint glow only in the dark; under a roof with one doorway the light dies
+away from the door. Bodies see with their eyes the way they face, by the contrast what they look
+at makes against what their eyes are adapted to, so two students see each other across a field
+by day but not in a dark room until a fire is lit, and a student who walks out of daylight into
+a dark room is blind for minutes. Sound comes from fire, footsteps, falling rubble, cracking
+beams, shattering crystals and spells, and reaches an ear straight through walls by the mass
+law, round corners by diffraction and by echo in closed rooms: a footstep 3.5 m off is about
+45 dB(A) and a stone wall silences it, a bang behind the end of a wall is 30 dB quieter than in
+the open, and in a stone room it rings 20 dB louder. A fire masks footsteps, a fireball strike
+15 m away wakes a sleeper and a footstep does not, and a student with one ear hears less. A
+witness who sees a fireball fly remembers it, with where and when. In the viewer, L shows the
+light, N turns day to moonlight to starlight, O turns the student, sounds ring where they were
+made, and the line under a student lists what they last saw and heard.
 
