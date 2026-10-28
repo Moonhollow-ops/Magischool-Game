@@ -4,6 +4,14 @@ The running record of what has been decided, newest first. Anything here is
 settled until the owner says otherwise; open questions live in
 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
 
+## 2026-10-28: Player controls, and physics first
+
+The owner tried the viewer and set the controls the game will use: left click
+moves the player, and right click opens an interaction menu for whatever was
+clicked. The viewer's keyboard controls are for testing until then. The owner
+wants to keep building world physics before game feel, because a world built
+from simulated parts is what will make it feel real.
+
 ## 2026-10-28: Bodies are trees of parts and organs
 
 The owner asked for limbs, organs, teeth and eyes instead of one skin layer,
