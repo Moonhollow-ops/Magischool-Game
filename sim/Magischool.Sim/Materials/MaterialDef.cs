@@ -90,13 +90,23 @@ public sealed record MaterialDef
     public float OxygenFraction { get; init; }
     public string? OxygenRemainder { get; init; }
 
-    // Arcane physics
-    /// <summary>Max etheric charge (Ψ) a tile holds before it ruptures.</summary>
-    public float EthericCapacity { get; init; }
-    /// <summary>0..1, how freely charge flows to neighbours per second.</summary>
-    public float ArcaneConductivity { get; init; }
-    /// <summary>0..1, fraction of passing charge a tile blocks.</summary>
-    public float AntiMagicInsulation { get; init; }
+    // Arcane physics (layer 7). The ether is a field of energy that pervades space; matter only
+    // changes how much of it a place holds and how freely it moves.
+    /// <summary>
+    /// How much ether a cubic metre of this material holds per unit of potential, relative to
+    /// open space (1). Charge in a tile is its potential (J/m³) times its capacity.
+    /// </summary>
+    public float EtherPermittivity { get; init; } = 1f;
+    /// <summary>
+    /// m²/s. How freely ether flows through the material: the flow across a face is this times
+    /// the face's area times the drop in potential per metre. Cold iron and lead nearly stop it.
+    /// </summary>
+    public float EtherConductivity { get; init; }
+    /// <summary>
+    /// J/m³. Solids only: the ether potential at which the material ruptures, its whole charge
+    /// discharging into it as heat and shattering it.
+    /// </summary>
+    public float EtherBreakdown { get; init; } = float.PositiveInfinity;
 
     /// <summary>Mass of one tile filled exactly to this material's density, kg.</summary>
     public double FullTileMass => Density * Core.WorldGrid.TileVolumeM3;

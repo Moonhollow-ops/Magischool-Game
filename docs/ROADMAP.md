@@ -13,8 +13,8 @@ cover it, including a determinism check.
 | 4b | Air currents | Warm air and smoke pool under a ceiling and spill out of a doorway; a draught through a window | Done |
 | 5 | Combustion and oxygen | Fire spreads through a wooden hut and dies when the air runs out | Done |
 | 6 | Structure and load | A burning support beam fails and the ceiling collapses | Done |
-| 7 | Ether field | Arcane charge flows through stone and ruptures an overloaded crystal | Next |
-| 8 | Spells as field inputs | Spells only add heat, force, charge or matter; the frozen pipe bursts with no special code | |
+| 7 | Ether field | Arcane charge flows through stone and ruptures an overloaded crystal | Done |
+| 8 | Spells as field inputs | Spells only add heat, force, charge or matter; the frozen pipe bursts with no special code | Next |
 | 9 | Bodies | A creature with body temperature, wounds and needs reacts to all of the above | |
 | 10 | Perception | NPC awareness from sight, light, sound and skill; someone notices a spell or its traces | |
 | 11 | Ecology | Plants grow, die and rot; simple creatures feed and wander | |
@@ -58,3 +58,18 @@ bursts a thin iron box but not a thick one, and pushes less near 0 °C
 because pressure melts ice. Since then a tile holding both a solid or
 liquid and gas keeps a temperature for each, so a thin post in a fire heats
 through its surface the way a real one does (see DECISIONS.md).
+
+Layer 7 is the ether: energy that pervades space, which casters will draw on
+in layer 8. Every tile holds some, counted in the energy audit, and every
+place has an ambient potential it settles to, refilled from a deep reservoir
+under the world over about ten minutes (within a second at a ley node). Ether
+flows from high potential to low through stone, earth and water and all but
+stops at cold iron and lead. An aether crystal holds forty times what open
+space does, but past its breakdown potential it ruptures: the charge it holds
+becomes heat in it and it shatters, and if the field keeps it overloaded it
+heats until it melts. In the test scene a crystal 3 m along a stone kerb from
+a ley node ruptures within two minutes; behind a wall of cold iron it stays
+at the ordinary potential. A great ritual that drains a place dry sees the
+hollow close from its surroundings within seconds and the reservoir make up
+the loss over half an hour. The test room now has an ordinary field, and a
+ley node and crystal outside the room's top wall (M shows the ether).

@@ -2,6 +2,8 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Magischool.Sim.Core;
+using Magischool.Sim.Structure;
+using Magischool.Sim.Ether;
 using Magischool.Sim.Fluids;
 using Magischool.Sim.Materials;
 using Magischool.Sim.Persistence;
@@ -66,7 +68,7 @@ public class ActivityTests
         {
             ISimSystem[] systems = sleeping
                 ? StandardSystems.Create()
-                : new ISimSystem[] { new ThermalSystem(), new PhaseSystem(), new FluidSystem() };
+                : new ISimSystem[] { new EtherSystem(), new ThermalSystem(), new PhaseSystem(), new StructureSystem(), new FluidSystem() };
             var sim = TestRoomGenerator.Create("fidelity", Table, 64, 48, 8, systems);
             for (int i = 0; i < 3_000; i++)
             {

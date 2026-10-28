@@ -22,6 +22,8 @@ public static class BuiltInMaterials
     public const string Nitrogen = "nitrogen";
     public const string CarbonDioxide = "carbon_dioxide";
     public const string Smoke = "smoke";
+    public const string Crystal = "crystal";
+    public const string MoltenCrystal = "molten_crystal";
 
     /// <summary>Mass fraction of oxygen in dry air.</summary>
     public const float AirOxygenFraction = 0.2314f;
@@ -39,7 +41,6 @@ public static class BuiltInMaterials
             // Burning takes its oxygen and leaves the rest behind as nitrogen.
             Density = 1.2f, SpecificHeat = 1005f, ThermalConductivity = 0.026f, MolarMass = 0.028965f,
             OxygenFraction = AirOxygenFraction, OxygenRemainder = Nitrogen,
-            EthericCapacity = 1f, ArcaneConductivity = 0.1f,
         },
         new()
         {
@@ -48,14 +49,14 @@ public static class BuiltInMaterials
             TensileStrength = 10f, CompressiveStrength = 130f, YoungsModulus = 50f,
             StrengthLossStartK = 873f, StrengthLossEndK = 1473f, MeltingPoint = 1500f, LatentHeatFusion = 400_000f,
             MeltsInto = Magma,
-            EthericCapacity = 50f, ArcaneConductivity = 0.3f,
+            EtherPermittivity = 4f, EtherConductivity = 0.4f, EtherBreakdown = 5e8f,
         },
         new()
         {
             Key = Soil, Name = "Soil", Phase = Phase.Solid, Glyph = ',', Color = 0x5A4128,
             Density = 1500f, SpecificHeat = 800f, ThermalConductivity = 0.5f,
             TensileStrength = 0.01f, CompressiveStrength = 0.1f, YoungsModulus = 0.05f,
-            EthericCapacity = 40f, ArcaneConductivity = 0.4f,
+            EtherPermittivity = 6f, EtherConductivity = 0.3f, EtherBreakdown = 5e8f,
         },
         new()
         {
@@ -70,27 +71,27 @@ public static class BuiltInMaterials
             {
                 new(CarbonDioxide, 1.6056f), new(Steam, 0.5466f), new(Smoke, 0.015f),
             },
-            EthericCapacity = 30f, ArcaneConductivity = 0.5f,
+            EtherPermittivity = 5f, EtherConductivity = 0.2f, EtherBreakdown = 2e8f,
         },
         new()
         {
-            // Cold iron disrupts magic: low capacity, poor conduction, some insulation.
+            // Cold iron disrupts magic: it holds little ether and all but stops its flow.
             Key = Iron, Name = "Iron", Phase = Phase.Solid, Glyph = 'I', Color = 0x8C96A0,
             Density = 7870f, SpecificHeat = 450f, ThermalConductivity = 80f,
             TensileStrength = 350f, CompressiveStrength = 350f, YoungsModulus = 200f,
             StrengthLossStartK = 673f, StrengthLossEndK = 1473f, MeltingPoint = 1811f, LatentHeatFusion = 247_000f,
             MeltsInto = MoltenIron,
-            EthericCapacity = 10f, ArcaneConductivity = 0.05f, AntiMagicInsulation = 0.3f,
+            EtherPermittivity = 0.5f, EtherConductivity = 0.0005f,
         },
         new()
         {
-            // Lead is the classic shield: almost blocks charge entirely.
+            // Lead is the classic shield: ether barely moves through it at all.
             Key = Lead, Name = "Lead", Phase = Phase.Solid, Glyph = 'L', Color = 0x50566B,
             Density = 11_340f, SpecificHeat = 129f, ThermalConductivity = 35f,
             TensileStrength = 18f, CompressiveStrength = 18f, YoungsModulus = 16f,
             StrengthLossStartK = 373f, StrengthLossEndK = 600.6f, MeltingPoint = 600.6f, LatentHeatFusion = 23_000f,
             MeltsInto = MoltenLead,
-            EthericCapacity = 5f, ArcaneConductivity = 0.02f, AntiMagicInsulation = 0.9f,
+            EtherPermittivity = 0.2f, EtherConductivity = 0.0001f,
         },
         new()
         {
@@ -99,7 +100,7 @@ public static class BuiltInMaterials
             MeltingPoint = 273.15f, BoilingPoint = 373.15f,
             LatentHeatFusion = 334_000f, LatentHeatVaporization = 2_257_000f,
             FreezesInto = Ice, BoilsInto = Steam,
-            EthericCapacity = 20f, ArcaneConductivity = 0.8f,
+            EtherPermittivity = 10f, EtherConductivity = 0.5f,
         },
         new()
         {
@@ -108,7 +109,7 @@ public static class BuiltInMaterials
             TensileStrength = 1f, CompressiveStrength = 5f, YoungsModulus = 9f,
             StrengthLossStartK = 253f, StrengthLossEndK = 273.15f, MeltingPoint = 273.15f, LatentHeatFusion = 334_000f,
             MeltsInto = Water,
-            EthericCapacity = 25f, ArcaneConductivity = 0.6f,
+            EtherPermittivity = 8f, EtherConductivity = 0.4f, EtherBreakdown = 1e8f,
         },
         new()
         {
@@ -116,7 +117,6 @@ public static class BuiltInMaterials
             Density = 0.6f, SpecificHeat = 2010f, ThermalConductivity = 0.025f, MolarMass = 0.018015f,
             BoilingPoint = 373.15f, LatentHeatVaporization = 2_257_000f,
             CondensesInto = Water,
-            EthericCapacity = 2f, ArcaneConductivity = 0.3f,
         },
         new()
         {
@@ -125,7 +125,7 @@ public static class BuiltInMaterials
             Density = 10_660f, SpecificHeat = 142f, ThermalConductivity = 16f, Viscosity = 0.0019f,
             MeltingPoint = 600.6f, LatentHeatFusion = 23_000f,
             FreezesInto = Lead,
-            EthericCapacity = 5f, ArcaneConductivity = 0.05f, AntiMagicInsulation = 0.9f,
+            EtherPermittivity = 0.2f, EtherConductivity = 0.0001f,
         },
         new()
         {
@@ -133,7 +133,7 @@ public static class BuiltInMaterials
             Density = 6_980f, SpecificHeat = 820f, ThermalConductivity = 40f, Viscosity = 0.006f,
             MeltingPoint = 1811f, LatentHeatFusion = 247_000f,
             FreezesInto = Iron,
-            EthericCapacity = 10f, ArcaneConductivity = 0.1f, AntiMagicInsulation = 0.3f,
+            EtherPermittivity = 0.5f, EtherConductivity = 0.0005f,
         },
         new()
         {
@@ -141,20 +141,18 @@ public static class BuiltInMaterials
             Density = 2_600f, SpecificHeat = 1000f, ThermalConductivity = 1.5f, Viscosity = 100f,
             MeltingPoint = 1500f, LatentHeatFusion = 400_000f,
             FreezesInto = Stone,
-            EthericCapacity = 60f, ArcaneConductivity = 0.4f,
+            EtherPermittivity = 6f, EtherConductivity = 1f,
         },
         new()
         {
             // What air leaves behind when its oxygen burns away (with the argon).
             Key = Nitrogen, Name = "Nitrogen", Phase = Phase.Gas, Glyph = ' ', Color = 0x101820,
             Density = 1.165f, SpecificHeat = 1040f, ThermalConductivity = 0.026f, MolarMass = 0.02816f,
-            EthericCapacity = 1f, ArcaneConductivity = 0.1f,
         },
         new()
         {
             Key = CarbonDioxide, Name = "Carbon dioxide", Phase = Phase.Gas, Glyph = ' ', Color = 0x181010,
             Density = 1.84f, SpecificHeat = 844f, ThermalConductivity = 0.0166f, MolarMass = 0.04401f,
-            EthericCapacity = 1f, ArcaneConductivity = 0.1f,
         },
         new()
         {
@@ -162,7 +160,27 @@ public static class BuiltInMaterials
             // they add almost nothing to pressure (a huge molar mass), but they do weigh the air down.
             Key = Smoke, Name = "Smoke", Phase = Phase.Gas, Glyph = '.', Color = 0x3C3C3C,
             Density = 1.2f, SpecificHeat = 700f, ThermalConductivity = 0.026f, MolarMass = 1.0f,
-            EthericCapacity = 1f, ArcaneConductivity = 0.1f,
+        },
+        new()
+        {
+            // A quartz that drinks in ether: it holds forty times what open space does and passes it
+            // freely, but past its breakdown potential it ruptures. Physical constants are quartz's.
+            Key = Crystal, Name = "Aether crystal", Phase = Phase.Solid, Glyph = 'C', Color = 0xB48CF0,
+            Density = 2650f, SpecificHeat = 740f, ThermalConductivity = 8f,
+            TensileStrength = 50f, CompressiveStrength = 1100f, YoungsModulus = 70f,
+            StrengthLossStartK = 1273f, StrengthLossEndK = 1873f, MeltingPoint = 1986f, LatentHeatFusion = 156_000f,
+            MeltsInto = MoltenCrystal,
+            EtherPermittivity = 40f, EtherConductivity = 2f, EtherBreakdown = 1e7f,
+        },
+        new()
+        {
+            // Molten silica is far stiffer than this (around 10^7 Pa·s); the fluids layer is only
+            // proven up to magma's 100, so for now it flows like magma.
+            Key = MoltenCrystal, Name = "Molten crystal", Phase = Phase.Liquid, Glyph = 'c', Color = 0xF0B4FF,
+            Density = 2200f, SpecificHeat = 1400f, ThermalConductivity = 2f, Viscosity = 100f,
+            MeltingPoint = 1986f, LatentHeatFusion = 156_000f,
+            FreezesInto = Crystal,
+            EtherPermittivity = 40f, EtherConductivity = 2f,
         },
     };
 

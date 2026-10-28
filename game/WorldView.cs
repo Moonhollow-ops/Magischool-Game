@@ -15,7 +15,7 @@ namespace Magischool.Game;
 /// current z-slice. The world only advances when an action spends ticks.
 ///
 /// Space: wait 1 tick · Enter: wait 1 s · W: wait 1 min · H: wait 10 min · Q/E: z down/up
-/// Tab: heat overlay · A: air currents · S: stress · 1-9: pick material · Left click: place it
+/// Tab: heat overlay · A: air currents · S: stress · M: ether · 1-9: pick material · Left click: place it
 /// Right click: set tile to 1000 K (Shift: 100 K), a debug tool that ignores conservation
 /// F5: save · F9: load · R: new seed · Hover a tile to read its contents
 /// </summary>
@@ -35,6 +35,7 @@ public partial class WorldView : Node2D
     private bool _heatOverlay;
     private bool _airOverlay;
     private bool _stressOverlay;
+    private bool _etherOverlay;
     private string _status = "";
     private int _hoverX = -1, _hoverY = -1;
 
@@ -86,6 +87,7 @@ public partial class WorldView : Node2D
             case Key.Tab: _heatOverlay = !_heatOverlay; break;
             case Key.A: _airOverlay = !_airOverlay; break;
             case Key.S: _stressOverlay = !_stressOverlay; break;
+            case Key.M: _etherOverlay = !_etherOverlay; break;
             case Key.R: NewWorld($"seed-{Time.GetTicksMsec()}"); break;
             case Key.F5: Save(); break;
             case Key.F9: Load(); break;
@@ -155,6 +157,7 @@ public partial class WorldView : Node2D
             var color = _heatOverlay ? HeatColor(grid.Temperature[i]) : MaterialColor(_materials[grid.DisplayMaterial(i)]);
             if (!_heatOverlay && SmokeGas >= 0) color = color.Lerp(SmokeColor, SmokeShade(grid, i));
             if (_stressOverlay && grid.HasCondensed(i) && _materials[grid.Material[i]].Phase == Phase.Solid) color = StressColor(grid, i);
+            if (_etherOverlay) color = EtherColor(grid.EtherPotential(i));
             DrawRect(new Rect2(x * TileSize, y * TileSize, TileSize - 1, TileSize - 1), color);
             if (grid.Flame[i] != 0)
                 DrawCircle(new Vector2((x + 0.5f) * TileSize, (y + 0.5f) * TileSize), TileSize * 0.22f, FlameColor);
@@ -163,12 +166,12 @@ public partial class WorldView : Node2D
 
         var font = ThemeDB.FallbackFont;
         float hudY = grid.Height * TileSize + 22;
-        string mode = (_stressOverlay ? "stress" : _heatOverlay ? "heat" : "materials") + (_airOverlay ? " + air" : "");
+        string mode = (_etherOverlay ? "ether" : _stressOverlay ? "stress" : _heatOverlay ? "heat" : "materials") + (_airOverlay ? " + air" : "");
         DrawString(font, new Vector2(4, hudY),
             $"seed '{_sim.Seed}'   tick {_sim.Tick} ({_sim.ElapsedSeconds:0.0} s)   z {_z}/{grid.Depth - 1}   view {mode}   brush {_materials[_brush].Name}",
             fontSize: 16);
         DrawString(font, new Vector2(4, hudY + 22),
-            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | S stress | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
+            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | S stress | M ether | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
             fontSize: 13, modulate: new Color(0.7f, 0.7f, 0.7f));
         if (_status.Length > 0)
             DrawString(font, new Vector2(4, hudY + 42), _status, fontSize: 13, modulate: new Color(1f, 0.85f, 0.4f));
@@ -196,7 +199,8 @@ public partial class WorldView : Node2D
             : grid.FallSpeed[i] > 0.0 ? "  falling" : "  loose";
         float load = Structure()?.UtilisationAt(i) ?? 0f;
         string stress = load > 0f ? $"  load {load:P0} of strength" : "";
-        return $"({x},{y},{z})  {held}{gases}  {celsius:0.0} °C{air}  {FluidSystem.PressureAt(grid, i) / 1000:0.###} kPa{burning}{structure}{stress}";
+        string ether = $"  ether {grid.EtherPotential(i) / 1e6:0.##} MJ/m³";
+        return $"({x},{y},{z})  {held}{gases}  {celsius:0.0} °C{air}  {FluidSystem.PressureAt(grid, i) / 1000:0.###} kPa{burning}{structure}{stress}{ether}";
     }
 
     private StructureSystem? Structure()
@@ -214,6 +218,15 @@ public partial class WorldView : Node2D
         return load < 0.5f
             ? new Color(0.1f, 0.6f, 0.2f).Lerp(new Color(0.95f, 0.85f, 0.1f), load / 0.5f)
             : new Color(0.95f, 0.85f, 0.1f).Lerp(new Color(0.9f, 0.1f, 0.1f), (load - 0.5f) / 0.5f);
+    }
+
+    /// <summary>Ether potential on a log scale: near-black at 0.1 MJ/m³, violet at 3, white by 100 and above.</summary>
+    private static Color EtherColor(double potential)
+    {
+        float t = (float)Math.Clamp((Math.Log10(Math.Max(potential, 1.0)) - 5.0) / 3.0, 0.0, 1.0);
+        return t < 0.5f
+            ? new Color(0.03f, 0.02f, 0.08f).Lerp(new Color(0.55f, 0.2f, 0.85f), t / 0.5f)
+            : new Color(0.55f, 0.2f, 0.85f).Lerp(new Color(1f, 0.95f, 1f), (t - 0.5f) / 0.5f);
     }
 
     private static readonly Color SmokeColor = new(0.15f, 0.15f, 0.15f);

@@ -16,7 +16,7 @@ namespace Magischool.Sim.Persistence;
 public static class Snapshot
 {
     private const uint Magic = 0x5753474D; // "MGSW"
-    public const ushort FormatVersion = 9;
+    public const ushort FormatVersion = 10;
 
     public static void Save(Simulation sim, Stream stream)
     {
@@ -57,6 +57,9 @@ public static class Snapshot
         writer.Write(grid.Structure);
         writer.Write(MemoryMarshal.AsBytes(grid.FallSpeed.AsSpan()));
         writer.Write(MemoryMarshal.AsBytes(grid.FallTravel.AsSpan()));
+        writer.Write(MemoryMarshal.AsBytes(grid.Ether.AsSpan()));
+        writer.Write(MemoryMarshal.AsBytes(grid.EtherAmbient.AsSpan()));
+        writer.Write(MemoryMarshal.AsBytes(grid.EtherRefillRate.AsSpan()));
         writer.Write(MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()));
     }
 
@@ -107,6 +110,9 @@ public static class Snapshot
         ReadExactly(reader, grid.Structure);
         ReadExactly(reader, MemoryMarshal.AsBytes(grid.FallSpeed.AsSpan()));
         ReadExactly(reader, MemoryMarshal.AsBytes(grid.FallTravel.AsSpan()));
+        ReadExactly(reader, MemoryMarshal.AsBytes(grid.Ether.AsSpan()));
+        ReadExactly(reader, MemoryMarshal.AsBytes(grid.EtherAmbient.AsSpan()));
+        ReadExactly(reader, MemoryMarshal.AsBytes(grid.EtherRefillRate.AsSpan()));
 
         var sim = new Simulation(seed, grid, materials, systems) { Tick = tick };
         ReadExactly(reader, MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()));

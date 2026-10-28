@@ -67,8 +67,14 @@ public sealed class PhaseSystem : ISimSystem
             if (!changed) break;
         }
 
-        // Nothing is colder than absolute zero. Only an outside command can push a tile here;
-        // flooring it means that command took out less energy than it asked for.
+        // A bead of liquid too small to hold its temperature through a tick can be cooled by the
+        // gas around it past its freezing point by more than it holds above absolute zero as a
+        // solid. The gas took that heat this very tick, so it gives it back: the two share one
+        // temperature rather than the bead going below zero.
+        if (grid.Temperature[i] < 0.0 && grid.HasTwoTemperatures(i)) EnergyAudit.Equalize(grid, i);
+
+        // Nothing is colder than absolute zero. Otherwise only an outside command can push a tile
+        // here; flooring it means that command took out less energy than it asked for.
         if (grid.Temperature[i] < 0.0) grid.Temperature[i] = 0.0;
         if (grid.GasTemperature[i] < 0.0) grid.GasTemperature[i] = 0.0;
     }

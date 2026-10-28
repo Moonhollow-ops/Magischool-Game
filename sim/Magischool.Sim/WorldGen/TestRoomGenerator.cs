@@ -1,6 +1,7 @@
 using System;
 using Magischool.Sim.Core;
 using Magischool.Sim.Determinism;
+using Magischool.Sim.Ether;
 using Magischool.Sim.Fluids;
 using Magischool.Sim.Materials;
 
@@ -9,13 +10,20 @@ namespace Magischool.Sim.WorldGen;
 /// <summary>
 /// A small seeded sandbox for testing physics layers: solid ground, a walled
 /// stone room with a wooden door, a capped lead water pipe, scattered props,
-/// a pond, and still air.
+/// a pond, still air, an ordinary ether field, and outside the room a ley node
+/// in the ground with an aether crystal on it, slowly charging toward rupture.
 /// Layout varies with the seed; the same seed always gives the same room.
 /// </summary>
 public static class TestRoomGenerator
 {
     public const int GroundZ = 0;
     public const int FloorZ = 1;
+
+    /// <summary>Ether potential of an ordinary place, J/m³.</summary>
+    public const double OrdinaryEther = 1e6;
+
+    /// <summary>Ether potential of the ley node, J/m³: fifty times richer, welling up within a second.</summary>
+    public const double LeyNodeEther = 5e7;
 
     public static Simulation Create(string seed, MaterialTable materials, int width = 48, int height = 32, int depth = 4,
         params ISimSystem[] systems)
@@ -41,6 +49,7 @@ public static class TestRoomGenerator
         ushort lead = materials.Id(BuiltInMaterials.Lead);
         ushort water = materials.Id(BuiltInMaterials.Water);
         ushort ice = materials.Id(BuiltInMaterials.Ice);
+        ushort crystal = materials.Id(BuiltInMaterials.Crystal);
 
         grid.Fill(air, room);
 
@@ -90,7 +99,20 @@ public static class TestRoomGenerator
         for (int x = pondX; x < pondX + 4; x++)
             grid.Set(x, y, GroundZ, water, 283.15f);
 
+        // A ley node in the ground in the corner beyond the room's top wall, with an aether crystal
+        // two tiles along from it on a stone kerb. The crystal fills past its breakdown in a minute or two.
+        Array.Fill(grid.EtherAmbient, OrdinaryEther);
+        int nodeX = width - 2, nodeY = 0;
+        int node = grid.Index(nodeX, nodeY, GroundZ);
+        grid.Set(nodeX, nodeY, GroundZ, stone, room);
+        grid.EtherAmbient[node] = LeyNodeEther;
+        grid.EtherRefillRate[node] = 1.0;
+        grid.Set(nodeX, nodeY, FloorZ, stone, room);
+        grid.Set(nodeX - 1, nodeY, FloorZ, stone, room);
+        grid.Set(nodeX - 2, nodeY, FloorZ, crystal, room);
+
         Atmosphere.Balance(grid, air, room);
+        EtherSystem.Balance(grid);
         return grid;
     }
 

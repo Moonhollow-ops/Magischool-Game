@@ -212,6 +212,28 @@ holding.
   catches in two or three minutes and fails after about ten, where before
   hot gas heated it through at once. A fuller tile (a wall, a log) still
   burns on its faces into the gas beside them.
+- **Ether field (layer 7):** ether is energy in space, in joules per tile,
+  counted in the energy audit. A tile's capacity is its open volume plus its
+  solid or liquid's volume times that material's ether permittivity (crystal
+  40, water 10, stone 4, iron 0.5, lead 0.2); potential is charge over
+  capacity, in J/m³. Ether flows across faces like heat, at each side's ether
+  conductivity in m²/s (crystal 2, magma 1, stone 0.4, iron 0.0005, lead
+  0.0001; open space 0.05), limited so it never overshoots. Every tile has an
+  ambient potential (ordinary places 1 MJ/m³) and a refill rate (1/600 per
+  second, 1 per second at a ley node); the reservoir pulls each tile toward
+  its ambient potential, relaxed exactly each tick, and everything that
+  crosses is counted. The ether stays where it is when matter moves. A solid
+  past its breakdown potential (crystal 10 MJ/m³, ice 100, wood 200, stone
+  and soil 500; metals, liquids and gases never) ruptures: the share of the
+  charge it holds becomes heat in it and all its bonds break. A chunk sleeps
+  when every tile is within 1 J/m³ of where its faces and the reservoir pull
+  it. The aether crystal is quartz physically and melts at 1986 K into molten
+  crystal, which never ruptures. The earlier placeholder arcane constants were
+  replaced. Not yet: ether carried with moving matter, arcs through air.
+- **Below absolute zero:** a bead of liquid too small to hold its temperature
+  through a tick can be cooled past freezing by the gas around it by more
+  than it holds above 0 K as a solid. Rather than flooring it (which made
+  energy), the bead and its gas are brought to one temperature.
 - **Active regions:** the world is split into 16 x 16 x 8 tile chunks. A chunk
   sleeps when every temperature difference in and around it is under 1 mK and
   no phase change is under way, and wakes when a neighbour pushes on it or a
