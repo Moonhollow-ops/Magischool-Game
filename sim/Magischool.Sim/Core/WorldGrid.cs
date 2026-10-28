@@ -86,6 +86,20 @@ public sealed class WorldGrid
     /// </summary>
     public readonly double[] Skin;
 
+    /// <summary>
+    /// How each solid tile holds together: bits 0 to 2 mark its bond to the +x, +y and +z
+    /// neighbour as broken (a tile's bonds toward -x, -y and -z are kept by those neighbours),
+    /// and <see cref="LooseBit"/> marks rubble that holds to nothing and only rests on what is
+    /// below it. Zero means fully bonded.
+    /// </summary>
+    public readonly byte[] Structure;
+
+    public const byte LooseBit = 8;
+
+    /// <summary>Downward speed of a falling loose tile, m/s, and how far it has fallen since it last moved a whole tile, m.</summary>
+    public readonly double[] FallSpeed;
+    public readonly double[] FallTravel;
+
     public WorldGrid(int width, int height, int depth, MaterialTable materials)
     {
         if (width <= 0 || height <= 0 || depth <= 0)
@@ -109,6 +123,9 @@ public sealed class WorldGrid
         AirVelocity = new[] { new double[Count], new double[Count], new double[Count] };
         Flame = new byte[Count];
         Skin = new double[Count * 6];
+        Structure = new byte[Count];
+        FallSpeed = new double[Count];
+        FallTravel = new double[Count];
     }
 
     public int Index(int x, int y, int z) => (z * Height + y) * Width + x;
@@ -149,6 +166,21 @@ public sealed class WorldGrid
             SetCondensed(index, material, Materials[material].FullTileMass);
         }
         Temperature[index] = temperatureK;
+        Flame[index] = 0;
+        Array.Clear(Skin, index * 6, 6);
+        FallSpeed[index] = 0.0;
+        FallTravel[index] = 0.0;
+        ResetBonds(index);
+    }
+
+    /// <summary>Makes a tile whole again: bonded to every solid neighbour and not loose.</summary>
+    public void ResetBonds(int index)
+    {
+        Structure[index] = 0;
+        int plane = Width * Height;
+        if (index % Width > 0) Structure[index - 1] &= unchecked((byte)~1);
+        if (index / Width % Height > 0) Structure[index - Width] &= unchecked((byte)~2);
+        if (index >= plane) Structure[index - plane] &= unchecked((byte)~4);
     }
 
     /// <summary>Put an exact mass of a solid or liquid in a tile's condensed slot. Leaves its gas alone.</summary>
@@ -217,6 +249,9 @@ public sealed class WorldGrid
             Array.Copy(AirVelocity[a], copy.AirVelocity[a], Count);
         Array.Copy(Flame, copy.Flame, Count);
         Array.Copy(Skin, copy.Skin, Skin.Length);
+        Array.Copy(Structure, copy.Structure, Count);
+        Array.Copy(FallSpeed, copy.FallSpeed, Count);
+        Array.Copy(FallTravel, copy.FallTravel, Count);
         return copy;
     }
 }

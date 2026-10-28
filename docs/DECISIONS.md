@@ -176,6 +176,30 @@ holding.
   flame in that gas, and cooled by conduction into the fuel; the heat it takes
   in comes out of the gas. A face burns while that surface is at or above the
   ignition point. Flames and surface temperatures are saved and hashed.
+- **Structure (layer 6):** every pair of touching solid tiles with stiffness
+  is bonded by a 3D elastic beam (stretch, bending both ways, shear, twist)
+  half a metre long, with the cross-section of the thinner tile (a tile 5%
+  full is a post about 11 cm square). The bottom layer of the world is
+  bedrock. Once a second, each bonded group in an awake region is solved for
+  static equilibrium by preconditioned conjugate gradients, from rest, so the
+  answer depends only on the world's state. Loads are the tiles' own weight,
+  the rubble and liquid stacked on them, and the pressure of ice packed past
+  full with no room to grow (bulk modulus times overfill, capped where that
+  pressure would melt the ice). A bond fails in tension, crushing, bending
+  or shear against the weaker tile's strength; strength falls linearly with
+  the temperature beneath the tile's surface layers (wood from 100 to 300 °C,
+  iron from 400 to 1200 °C). The worst bond breaks, the group is re-solved,
+  and up to 64 bonds break per group per second. Pieces cut off from bedrock
+  become loose rubble that rests on what is below and falls at gravity's
+  rate up to one tile per tick; the potential energy lost becomes heat in the
+  falling tile. Broken bonds, rubble and fall speeds are saved and hashed.
+  Not yet: stiffness lost to heat, impact forces, sideways pressure of
+  liquids, potential energy of liquids and gases.
+- **Known limit, one temperature per tile:** a part-full tile's solid and the
+  gas in it share one temperature, so hot gas flowing through a thin post
+  heats the wood at once. Burning posts fail in a few minutes where real
+  ones last longer. The fix is to give the gas in a tile its own
+  temperature, exchanging heat with the solid through its surface.
 - **Active regions:** the world is split into 16 x 16 x 8 tile chunks. A chunk
   sleeps when every temperature difference in and around it is under 1 mK and
   no phase change is under way, and wakes when a neighbour pushes on it or a

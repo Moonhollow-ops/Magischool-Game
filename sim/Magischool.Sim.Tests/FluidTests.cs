@@ -133,11 +133,18 @@ public class FluidTests
     [Fact]
     public void ConnectedColumnsSettleAtTheSameLevel()
     {
-        // A U-tube: two columns joined at the bottom, one starting full and one empty.
-        var grid = Box(3, 1, 8);
-        for (int z = 1; z < 8; z++) grid.Set(1, 0, z, Stone, Room);
-        for (int z = 0; z < 6; z++) grid.Set(0, 0, z, Water, Room);
-        grid.Set(1, 0, 0, Water, Room);
+        // A U-tube: two columns joined at the bottom, one starting full and one empty. The
+        // stone between them hangs from the stone walls in front and behind.
+        var grid = Box(3, 3, 8);
+        for (int z = 0; z < 8; z++)
+        for (int x = 0; x < 3; x++)
+        {
+            grid.Set(x, 0, z, Stone, Room);
+            grid.Set(x, 2, z, Stone, Room);
+        }
+        for (int z = 1; z < 8; z++) grid.Set(1, 1, z, Stone, Room);
+        for (int z = 0; z < 6; z++) grid.Set(0, 1, z, Water, Room);
+        grid.Set(1, 1, 0, Water, Room);
         var sim = Sealed(grid);
         double water = AllWater(grid);
 
@@ -265,7 +272,8 @@ public class FluidTests
     [Fact]
     public void BoilingAPotFillsTheRoomWithSteamThatCondensesOnColdStone()
     {
-        // A sealed stone cell with a pot of water on a red-hot iron plate and a cold stone roof.
+        // A sealed stone cell with a pot of water on a red-hot iron plate and a cold stone roof
+        // on four corner pillars.
         var grid = Box(5, 5, 5);
         for (int y = 0; y < 5; y++)
         for (int x = 0; x < 5; x++)
@@ -273,6 +281,8 @@ public class FluidTests
             grid.Set(x, y, 0, Stone, Room);
             grid.Set(x, y, 4, Stone, 280);
         }
+        foreach (var (x, y) in new[] { (0, 0), (0, 4), (4, 0), (4, 4) })
+            for (int z = 1; z < 4; z++) grid.Set(x, y, z, Stone, Room);
         grid.Set(2, 2, 0, Table.Id(BuiltInMaterials.Iron), 1200);
         grid.SetCondensed(grid.Index(2, 2, 1), Water, FullWater * 0.5);
         grid.Temperature[grid.Index(2, 2, 1)] = 370;

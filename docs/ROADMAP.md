@@ -12,8 +12,8 @@ cover it, including a determinism check.
 | 4 | Fluids and gases | A room floods through a door; steam rises and fills the ceiling | Done (first pass, see below) |
 | 4b | Air currents | Warm air and smoke pool under a ceiling and spill out of a doorway; a draught through a window | Done |
 | 5 | Combustion and oxygen | Fire spreads through a wooden hut and dies when the air runs out | Done |
-| 6 | Structure and load | A burning support beam fails and the ceiling collapses | Next |
-| 7 | Ether field | Arcane charge flows through stone and ruptures an overloaded crystal | |
+| 6 | Structure and load | A burning support beam fails and the ceiling collapses | Done |
+| 7 | Ether field | Arcane charge flows through stone and ruptures an overloaded crystal | Next |
 | 8 | Spells as field inputs | Spells only add heat, force, charge or matter; the frozen pipe bursts with no special code | |
 | 9 | Bodies | A creature with body temperature, wounds and needs reacts to all of the above | |
 | 10 | Perception | NPC awareness from sight, light, sound and skill; someone notices a spell or its traces | |
@@ -43,3 +43,18 @@ in that gas, so a fire keeps its own face lit and spreads to the wood around
 it over minutes. In the test hut a smouldering log sets the corner walls
 alight, and the fire goes out once it has drawn the oxygen down to about 15%.
 Charring, smouldering, carbon monoxide and wet wood come later.
+
+Layer 6 holds the world up. Touching solids are bonded, and each bond is a
+short elastic beam, so a structure is solved for its stresses under its own
+weight and whatever rests on it, down to the bedrock at the bottom of the
+world. A bond breaks when its stress passes the weaker tile's strength,
+which falls with heat and with a cross-section thinned by burning; the most
+overloaded bond goes first and the load shifts onto the rest. Anything no
+longer held to bedrock is rubble and falls, and its lost potential energy
+becomes heat. A stone cantilever is stressed within 8% of beam theory and
+snaps at the length theory predicts (8 m); posts burning under a stone
+roof give way and the roof comes down; ice frozen with no room to grow
+bursts a thin iron box but not a thick one, and pushes less near 0 °C
+because pressure melts ice. Known gap: a part-full tile shares one
+temperature with the air in it, so thin posts heat faster in hot gas than
+real ones would (see DECISIONS.md).

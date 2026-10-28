@@ -1,5 +1,6 @@
 using Magischool.Sim.Combustion;
 using Magischool.Sim.Fluids;
+using Magischool.Sim.Structure;
 using Magischool.Sim.Thermal;
 
 namespace Magischool.Sim.Core;
@@ -16,6 +17,7 @@ public static class StandardSystems
         new ThermalSystem(),
         new PhaseSystem(),
         new CombustionSystem(),
+        new StructureSystem(), // before fluids, so gas and water fill where rubble fell from
         new FluidSystem(openSky), // after phase changes, so fresh steam moves the same tick
         new ActivitySystem(), // always last: decides what sleeps next tick
     };

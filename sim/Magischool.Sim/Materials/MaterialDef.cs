@@ -39,6 +39,19 @@ public sealed record MaterialDef
     public float Viscosity { get; init; }
     /// <summary>MPa. Zero for fluids.</summary>
     public float TensileStrength { get; init; }
+    /// <summary>MPa. Solids only: the stress at which the material crushes.</summary>
+    public float CompressiveStrength { get; init; }
+    /// <summary>
+    /// GPa. Solids only: stiffness, how little the material gives under load. A solid with
+    /// none can't bond to its neighbours and lies loose, like gravel.
+    /// </summary>
+    public float YoungsModulus { get; init; }
+    /// <summary>
+    /// K. A solid keeps its full strength up to <see cref="StrengthLossStartK"/> and loses it
+    /// evenly until none is left at <see cref="StrengthLossEndK"/> (wood chars, iron softens).
+    /// </summary>
+    public float StrengthLossStartK { get; init; } = float.PositiveInfinity;
+    public float StrengthLossEndK { get; init; } = float.PositiveInfinity;
     /// <summary>K. Solid becomes liquid at or above this.</summary>
     public float MeltingPoint { get; init; } = float.PositiveInfinity;
     /// <summary>K. Liquid becomes gas at or above this.</summary>
