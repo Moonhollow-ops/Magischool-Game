@@ -10,25 +10,39 @@ namespace Magischool.Sim.Thermal;
 /// latent energy it is part-way through absorbing, and the latent heat its
 /// material already contains relative to its coldest phase (water carries the
 /// heat that melted it; steam also carries the heat that boiled it). Gases
-/// count the same way as condensed contents.
+/// count the same way as condensed contents, at the gas temperature.
 /// </summary>
 public static class EnergyAudit
 {
     /// <summary>
-    /// Sets a tile's temperature so that its energy equals <paramref name="joules"/>, given what
-    /// it now contains. Leaves the temperature alone if the tile holds nothing.
+    /// Sets a tile's temperatures so its solid or liquid holds <paramref name="condensedJoules"/>
+    /// and its gas <paramref name="gasJoules"/>, given what it now contains. In a tile with one
+    /// temperature only the sum matters. A part with nothing in it keeps its temperature.
     /// </summary>
-    public static void SolveTemperature(WorldGrid grid, int i, double joules)
+    public static void SolveTemperatures(WorldGrid grid, int i, double condensedJoules, double gasJoules)
     {
-        double capacity = grid.HeatCapacity(i);
-        if (capacity <= 0.0) return;
         double[] offsets = OffsetsFor(grid.Materials);
         var table = grid.Materials;
-        double fixedPart = grid.LatentEnergy[i] + grid.Mass[i] * offsets[grid.Material[i]];
+        double condensedFixed = grid.LatentEnergy[i] + grid.Mass[i] * offsets[grid.Material[i]];
+        double gasFixed = 0.0;
         for (int s = 0; s < table.GasCount; s++)
-            fixedPart += grid.GasMass[s][i] * offsets[table.GasIds[s]];
-        grid.Temperature[i] = (joules - fixedPart) / capacity;
+            gasFixed += grid.GasMass[s][i] * offsets[table.GasIds[s]];
+        double cc = grid.CondensedHeatCapacity(i), cg = grid.GasHeatCapacity(i);
+
+        if (grid.HasTwoTemperatures(i) && cc > 0.0 && cg > 0.0)
+        {
+            grid.Temperature[i] = (condensedJoules - condensedFixed) / cc;
+            grid.GasTemperature[i] = (gasJoules - gasFixed) / cg;
+            return;
+        }
+        double capacity = cc + cg;
+        if (capacity <= 0.0) return;
+        grid.SetTemperature(i, (condensedJoules + gasJoules - condensedFixed - gasFixed) / capacity);
     }
+
+    /// <summary>Adds energy to a tile's solid or liquid and to its gas, J.</summary>
+    public static void AddJoules(WorldGrid grid, int i, double condensedJoules, double gasJoules) =>
+        SolveTemperatures(grid, i, CondensedJoules(grid, i) + condensedJoules, GasJoules(grid, i) + gasJoules);
 
     public static double TotalJoules(WorldGrid grid)
     {
@@ -39,14 +53,24 @@ public static class EnergyAudit
     }
 
     /// <summary>Internal energy of one tile: its condensed contents, its gases and any latent energy in progress.</summary>
-    public static double TileJoules(WorldGrid grid, int i)
+    public static double TileJoules(WorldGrid grid, int i) => CondensedJoules(grid, i) + GasJoules(grid, i);
+
+    /// <summary>Internal energy of a tile's solid or liquid, latent energy in progress included.</summary>
+    public static double CondensedJoules(WorldGrid grid, int i)
+    {
+        double[] offsets = OffsetsFor(grid.Materials);
+        ushort m = grid.Material[i];
+        return grid.Mass[i] * (grid.Materials[m].SpecificHeat * grid.Temperature[i] + offsets[m]) + grid.LatentEnergy[i];
+    }
+
+    /// <summary>Internal energy of a tile's gas.</summary>
+    public static double GasJoules(WorldGrid grid, int i)
     {
         double[] offsets = OffsetsFor(grid.Materials);
         var table = grid.Materials;
-        double t = grid.Temperature[i];
-        ushort m = grid.Material[i];
-        double total = grid.Mass[i] * (table[m].SpecificHeat * t + offsets[m]) + grid.LatentEnergy[i];
         var gasIds = table.GasIds;
+        double t = grid.GasTemperatureAt(i);
+        double total = 0.0;
         for (int s = 0; s < gasIds.Count; s++)
         {
             double gas = grid.GasMass[s][i];

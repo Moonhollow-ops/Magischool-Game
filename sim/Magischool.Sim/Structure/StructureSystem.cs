@@ -4,6 +4,7 @@ using Magischool.Sim.Combustion;
 using Magischool.Sim.Core;
 using Magischool.Sim.Fluids;
 using Magischool.Sim.Materials;
+using Magischool.Sim.Thermal;
 
 namespace Magischool.Sim.Structure;
 
@@ -156,12 +157,8 @@ public sealed class StructureSystem : ISimSystem
             double released = (TileMass(grid, i) - TileMass(grid, j)) * FluidSystem.Gravity * WorldGrid.TileSizeM;
             Swap(grid, i, j);
             grid.ResetBonds(i);
-            double capacity = grid.HeatCapacity(j);
-            if (capacity > 0.0)
-            {
-                grid.Temperature[j] += released / capacity;
-                ReleasedPotentialJ += released;
-            }
+            EnergyAudit.AddJoules(grid, j, released, 0.0);
+            ReleasedPotentialJ += released;
         }
     }
 
@@ -183,6 +180,7 @@ public sealed class StructureSystem : ISimSystem
         (grid.Mass[a], grid.Mass[b]) = (grid.Mass[b], grid.Mass[a]);
         (grid.LatentEnergy[a], grid.LatentEnergy[b]) = (grid.LatentEnergy[b], grid.LatentEnergy[a]);
         (grid.Temperature[a], grid.Temperature[b]) = (grid.Temperature[b], grid.Temperature[a]);
+        (grid.GasTemperature[a], grid.GasTemperature[b]) = (grid.GasTemperature[b], grid.GasTemperature[a]);
         foreach (var gas in grid.GasMass) (gas[a], gas[b]) = (gas[b], gas[a]);
         (grid.Flame[a], grid.Flame[b]) = (grid.Flame[b], grid.Flame[a]);
         for (int k = 0; k < 6; k++)

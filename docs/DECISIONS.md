@@ -195,11 +195,23 @@ holding.
   falling tile. Broken bonds, rubble and fall speeds are saved and hashed.
   Not yet: stiffness lost to heat, impact forces, sideways pressure of
   liquids, potential energy of liquids and gases.
-- **Known limit, one temperature per tile:** a part-full tile's solid and the
-  gas in it share one temperature, so hot gas flowing through a thin post
-  heats the wood at once. Burning posts fail in a few minutes where real
-  ones last longer. The fix is to give the gas in a tile its own
-  temperature, exchanging heat with the solid through its surface.
+- **Two temperatures per tile:** a tile holding both a solid or liquid and
+  more than 0.1 mg of gas keeps a temperature for each. Every face is shared
+  between the two by how much of it each covers (a solid its fill on every
+  face; a liquid the whole floor, the sides up to its depth and the ceiling
+  only when full), giving four paths: solid–solid, solid–gas, gas–solid,
+  gas–gas. Inside the tile they trade heat by
+  convection (10 W/(m²·K)) and radiation over the surface between them (a
+  cube of the solid's volume; a liquid's floor), relaxed exactly so it never
+  overshoots. Gas pressure, buoyancy and everything gas carries use the gas
+  temperature; melting and boiling use the solid's or liquid's, condensing
+  the gas's. Heat put straight into a tile (a spell) goes into its solid or
+  liquid. A fuel tile at least half empty (a post, a heap) burns into its
+  own gas over its whole surface, catching when that surface reaches its ignition point, and a
+  flame in that gas pours 25 kW/m² onto it. So a thin post in a fire now
+  catches in two or three minutes and fails after about ten, where before
+  hot gas heated it through at once. A fuller tile (a wall, a log) still
+  burns on its faces into the gas beside them.
 - **Active regions:** the world is split into 16 x 16 x 8 tile chunks. A chunk
   sleeps when every temperature difference in and around it is under 1 mK and
   no phase change is under way, and wakes when a neighbour pushes on it or a

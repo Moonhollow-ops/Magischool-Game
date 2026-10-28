@@ -121,8 +121,8 @@ public class StructureTests
     }
 
     /// <summary>
-    /// A stone slab on a wooden beam on two posts about 11 cm square and 1.5 m tall. With
-    /// <paramref name="fire"/>, four smouldering logs are heaped round the foot of one post.
+    /// A stone slab on a wooden beam on two posts about 11 cm square and 1.5 m tall, out in the
+    /// open. With <paramref name="fire"/>, four smouldering logs are heaped round the foot of one post.
     /// </summary>
     private static WorldGrid Shelter(bool fire)
     {
@@ -153,19 +153,23 @@ public class StructureTests
         Assert.Equal(Stone, cold.Material[cold.Index(3, 2, 5)]);
 
         var grid = Shelter(fire: true);
-        var sim = Start(grid);
+        // Under open sky, so the fire draws fresh air: boxed in by the logs, the post's foot
+        // would otherwise smother in their smoke.
+        var sim = Start(grid, openSky: true);
         double mass0 = TotalMass(grid), energy0 = EnergyAudit.TotalJoules(grid);
-        sim.Step(3000);
+        sim.Step(9000);
 
         // The post weakened as it heated, gave way, and the roof came down in pieces.
-        Assert.Equal(MaterialTable.Empty, grid.Material[grid.Index(3, 2, 5)]);
+        Assert.NotEqual(Stone, grid.Material[grid.Index(3, 2, 5)]);
         int rubble = 0;
         for (int i = 0; i < grid.Count; i++)
             if (grid.Material[i] == Stone && IsLoose(grid, i)) rubble++;
         Assert.Equal(12, rubble);
 
-        Assert.Equal(mass0, TotalMass(grid), mass0 * 1e-12);
-        Assert.Equal(energy0 + Structure(sim).ReleasedPotentialJ, EnergyAudit.TotalJoules(grid), energy0 * 1e-11);
+        // Nothing made or lost, counting what went up through the sky.
+        var fluid = sim.Systems.OfType<FluidSystem>().Single();
+        Assert.Equal(mass0, TotalMass(grid) + fluid.SkyGasOutKg.Sum(), mass0 * 1e-12);
+        Assert.Equal(energy0 + Structure(sim).ReleasedPotentialJ, EnergyAudit.TotalJoules(grid) + fluid.SkyEnergyOutJ, energy0 * 1e-11);
     }
 
     /// <summary>A 3x3x3 iron box with walls <paramref name="wallFill"/> full, holding a tile of water frozen solid.</summary>
@@ -216,14 +220,14 @@ public class StructureTests
     [Fact]
     public void ACollapseRestoredFromASnapshotFallsIdentically()
     {
-        var live = Start(Shelter(fire: true));
-        live.Step(1250);
+        var live = Start(Shelter(fire: true), openSky: true);
+        live.Step(6000);
 
-        var restored = Snapshot.FromBytes(Snapshot.ToBytes(live), Table, StandardSystems.Create(openSky: false));
+        var restored = Snapshot.FromBytes(Snapshot.ToBytes(live), Table, StandardSystems.Create(openSky: true));
         Assert.Equal(live.StateHash(), restored.StateHash());
 
-        live.Step(400);
-        restored.Step(400);
+        live.Step(800);
+        restored.Step(800);
         Assert.Equal(live.StateHash(), restored.StateHash());
         Assert.True(Structure(live).BondsBroken > 0);
     }

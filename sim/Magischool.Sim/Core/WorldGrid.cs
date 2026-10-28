@@ -45,11 +45,23 @@ public sealed class WorldGrid
     public readonly ushort[] Material;
 
     /// <summary>
-    /// Temperature per tile in kelvin, shared by everything in the tile. Double,
-    /// not float: a float can't resolve the tiny per-tick changes of slow
-    /// conduction at room temperature, and the rounding silently destroys energy.
+    /// Temperature per tile in kelvin: of its solid or liquid, or of its gas when it holds
+    /// nothing else. Double, not float: a float can't resolve the tiny per-tick changes of
+    /// slow conduction at room temperature, and the rounding silently destroys energy.
     /// </summary>
     public readonly double[] Temperature;
+
+    /// <summary>
+    /// Temperature of the gas in a tile that also holds a solid or liquid, K (see
+    /// <see cref="HasTwoTemperatures"/>): a thin post in a plume, or a puddle under warm air,
+    /// is not the temperature of the air around it, and the two trade heat through the
+    /// surface between them. Read it through <see cref="GasTemperatureAt"/>; in any other
+    /// tile the gas is simply at <see cref="Temperature"/>.
+    /// </summary>
+    public readonly double[] GasTemperature;
+
+    /// <summary>Gas below this in a tile with a solid or liquid is too little to keep a temperature of its own, kg.</summary>
+    public const double SeparateGasKg = 1e-7;
 
     /// <summary>Mass of the condensed material in kg (0 when the slot is empty).</summary>
     public readonly double[] Mass;
@@ -115,6 +127,7 @@ public sealed class WorldGrid
         Materials = materials;
         Material = new ushort[Count];
         Temperature = new double[Count];
+        GasTemperature = new double[Count];
         Mass = new double[Count];
         LatentEnergy = new double[Count];
         GasMass = new double[materials.GasCount][];
@@ -166,6 +179,7 @@ public sealed class WorldGrid
             SetCondensed(index, material, Materials[material].FullTileMass);
         }
         Temperature[index] = temperatureK;
+        GasTemperature[index] = temperatureK;
         Flame[index] = 0;
         Array.Clear(Skin, index * 6, 6);
         FallSpeed[index] = 0.0;
@@ -210,13 +224,32 @@ public sealed class WorldGrid
     }
 
     /// <summary>Heat capacity of everything in a tile, J/K.</summary>
-    public double HeatCapacity(int index)
+    public double HeatCapacity(int index) => CondensedHeatCapacity(index) + GasHeatCapacity(index);
+
+    /// <summary>Heat capacity of a tile's solid or liquid, J/K.</summary>
+    public double CondensedHeatCapacity(int index) => Mass[index] * Materials[Material[index]].SpecificHeat;
+
+    /// <summary>Heat capacity of a tile's gas, J/K.</summary>
+    public double GasHeatCapacity(int index)
     {
-        double c = Mass[index] * Materials[Material[index]].SpecificHeat;
+        double c = 0.0;
         var gasIds = Materials.GasIds;
         for (int s = 0; s < gasIds.Count; s++)
             c += GasMass[s][index] * Materials[gasIds[s]].SpecificHeat;
         return c;
+    }
+
+    /// <summary>Whether a tile holds both a solid or liquid and enough gas for each to have its own temperature.</summary>
+    public bool HasTwoTemperatures(int index) => HasCondensed(index) && TotalGasMass(index) > SeparateGasKg;
+
+    /// <summary>Temperature of the gas in a tile, K.</summary>
+    public double GasTemperatureAt(int index) => HasTwoTemperatures(index) ? GasTemperature[index] : Temperature[index];
+
+    /// <summary>Sets a tile to one temperature throughout, gas included.</summary>
+    public void SetTemperature(int index, double temperatureK)
+    {
+        Temperature[index] = temperatureK;
+        GasTemperature[index] = temperatureK;
     }
 
     /// <summary>How full the condensed slot is relative to its material's natural density (1 = exactly full).</summary>
@@ -241,6 +274,7 @@ public sealed class WorldGrid
         var copy = new WorldGrid(Width, Height, Depth, Materials);
         Array.Copy(Material, copy.Material, Count);
         Array.Copy(Temperature, copy.Temperature, Count);
+        Array.Copy(GasTemperature, copy.GasTemperature, Count);
         Array.Copy(Mass, copy.Mass, Count);
         Array.Copy(LatentEnergy, copy.LatentEnergy, Count);
         for (int s = 0; s < GasMass.Length; s++)

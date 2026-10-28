@@ -28,6 +28,34 @@ public class ThermalTests
     private static double TotalEnergy(Simulation sim) => EnergyAudit.TotalJoules(sim.Grid);
 
     [Fact]
+    public void AHotRodWarmsTheAirAroundItWithoutEitherOvershooting()
+    {
+        // One tile, alone: a thin iron rod at 800 K standing in room-temperature air.
+        var sim = Box(1, 1, 1, Air);
+        var grid = sim.Grid;
+        grid.SetCondensed(0, Iron, 0.05 * Table[Iron].FullTileMass);
+        grid.Temperature[0] = 800.0;
+        Assert.True(grid.HasTwoTemperatures(0));
+        double cc = grid.CondensedHeatCapacity(0), cg = grid.GasHeatCapacity(0);
+        double settled = (cc * 800.0 + cg * Room) / (cc + cg);
+        double before = TotalEnergy(sim);
+
+        // The air takes its heat over seconds, not all at once: the rod is still far hotter after a tick.
+        sim.Step(1);
+        Assert.True(grid.Temperature[0] - grid.GasTemperatureAt(0) > 100.0);
+
+        for (int t = 0; t < 3000; t++)
+        {
+            sim.Step(1);
+            Assert.True(grid.GasTemperatureAt(0) <= grid.Temperature[0]);
+            Assert.Equal(before, TotalEnergy(sim), before * 1e-12);
+        }
+        // Five minutes on they share one temperature, where the energy they hold puts it.
+        Assert.Equal(settled, grid.Temperature[0], 0.01);
+        Assert.Equal(settled, grid.GasTemperatureAt(0), 0.01);
+    }
+
+    [Fact]
     public void EnergyIsConservedInTheTestRoom()
     {
         var sim = TestRoomGenerator.Create("conserve", Table, systems: new ThermalSystem());

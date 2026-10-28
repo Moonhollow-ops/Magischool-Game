@@ -97,7 +97,7 @@ public sealed class CombustionSystem : ISimSystem
     private double _oxygenFraction;
 
     private double[] _dFuel = Array.Empty<double>();
-    private double[] _dEnergy = Array.Empty<double>();
+    private double[] _dEnergyC = Array.Empty<double>(), _dEnergyG = Array.Empty<double>();
     private double[][] _dGas = Array.Empty<double[]>();
     private bool[] _changed = Array.Empty<bool>();
     private byte[] _flame = Array.Empty<byte>();
@@ -133,7 +133,7 @@ public sealed class CombustionSystem : ISimSystem
             {
                 int i = grid.Index(x, y, z);
                 int count = Neighbours(grid, activity, x, y, z, x0, x1, y0, y1, z0, z1, near, nearAwake, nearChunk);
-                double fuelLoss = 0.0, energy = 0.0;
+                double fuelLoss = 0.0, energyC = 0.0, energyG = 0.0;
                 bool changed = false;
                 byte flame = 0;
                 bool isFuel = _isFuel[grid.Material[i]];
@@ -159,7 +159,8 @@ public sealed class CombustionSystem : ISimSystem
                         {
                             fuelLoss += asFuel;
                             burned += asFuel;
-                            if (j != i) energy += heatIn - FuelEnergy(grid, i, asFuel);
+                            // Fuel burning in its own tile's gas hands its energy across inside the tile.
+                            energyC += heatIn - FuelEnergy(grid, i, asFuel);
                             if (asFuel > 0.0) flame |= (byte)(1 << site);
                             changed = true;
                         }
@@ -176,7 +177,7 @@ public sealed class CombustionSystem : ISimSystem
                         continue;
                     }
                     changed = true;
-                    if (j != i) energy += FuelEnergy(grid, j, asGas) - heatOut;
+                    energyG += FuelEnergy(grid, j, asGas) - heatOut;
                     if (asGas <= 0.0) continue;
                     ushort fuel = grid.Material[j];
                     _dGas[_air][i] -= asGas * _airPerKg[fuel];
@@ -185,8 +186,16 @@ public sealed class CombustionSystem : ISimSystem
                     double[] kg = _productKg[fuel];
                     for (int p = 0; p < species.Length; p++) _dGas[species[p]][i] += asGas * kg[p];
                 }
+                double interior = InteriorHeat(grid, i);
+                if (interior > 0.0)
+                {
+                    energyC += interior;
+                    energyG -= interior;
+                    changed = true;
+                }
                 _dFuel[i] = fuelLoss;
-                _dEnergy[i] = energy;
+                _dEnergyC[i] = energyC;
+                _dEnergyG[i] = energyG;
                 _changed[i] = changed;
                 _flame[i] = flame;
                 if (changed) activity.Stirred[chunk] = true;
@@ -206,7 +215,8 @@ public sealed class CombustionSystem : ISimSystem
                 grid.Flame[i] = _flame[i];
                 for (int face = 0; face < 6; face++) grid.Skin[i * 6 + face] = _skin[i * 6 + face];
                 if (!_changed[i]) continue;
-                double joules = EnergyAudit.TileJoules(grid, i) + _dEnergy[i];
+                double condensed = EnergyAudit.CondensedJoules(grid, i) + _dEnergyC[i];
+                double gas = EnergyAudit.GasJoules(grid, i) + _dEnergyG[i];
                 double loss = _dFuel[i];
                 if (loss > 0.0)
                 {
@@ -218,6 +228,8 @@ public sealed class CombustionSystem : ISimSystem
                     {
                         if (_smoke >= 0) grid.GasMass[_smoke][i] += Math.Max(mass, 0.0);
                         grid.SetCondensed(i, MaterialTable.Empty, 0.0);
+                        gas += condensed;
+                        condensed = 0.0;
                         grid.Flame[i] = 0;
                         for (int face = 0; face < 6; face++) grid.Skin[i * 6 + face] = 0.0;
                     }
@@ -228,7 +240,7 @@ public sealed class CombustionSystem : ISimSystem
                     double g = grid.GasMass[s][i] + _dGas[s][i];
                     grid.GasMass[s][i] = g > 0.0 ? g : 0.0;
                 }
-                EnergyAudit.SolveTemperature(grid, i, joules);
+                EnergyAudit.SolveTemperatures(grid, i, condensed, gas);
             }
         });
 
@@ -248,11 +260,22 @@ public sealed class CombustionSystem : ISimSystem
         double strength = OxygenStrength(grid, g);
         if (strength <= 0.0) return 0.0;
 
-        // Gas inside the fuel's own tile meets the fuel at the fuel's temperature.
-        double surface = f == g ? grid.Temperature[f] : SkinOf(grid, f, SiteBit(grid, f, g) - 1);
-        if (surface < _ignition[fuel]) return 0.0;
+        // A part-full fuel tile (a post, a heap) with gas of its own burns into that gas over all
+        // of its surface; a full one burns on its faces into the gas beside them.
+        double area;
+        if (StandsInOwnGas(grid, f))
+        {
+            if (f != g) return 0.0;
+            if (InteriorSurfaceTemperature(grid, f) < _ignition[fuel]) return 0.0;
+            area = InteriorArea(grid, f);
+        }
+        else
+        {
+            if (f == g || SkinOf(grid, f, SiteBit(grid, f, g) - 1) < _ignition[fuel]) return 0.0;
+            area = WorldGrid.TileFaceAreaM2;
+        }
 
-        double kg = BurnRateKgPerM2S * WorldGrid.TileFaceAreaM2 * Exposed(grid, f) * Simulation.SecondsPerTick * strength;
+        double kg = BurnRateKgPerM2S * area * Simulation.SecondsPerTick * strength;
         kg = Math.Min(kg, FuelCapPerSite * fuelMass);
         kg = Math.Min(kg, OxygenCapPerFuel * grid.GasMass[_air][g] * _oxygenFraction / _oxygenPerKg[fuel]);
         return kg;
@@ -292,10 +315,16 @@ public sealed class CombustionSystem : ISimSystem
         double stored = grid.Skin[f * 6 + face];
         skinAfter = stored;
         if (grid.FreeVolume(g) < FluidSystem.GasLockFraction * WorldGrid.TileVolumeM3) return 0.0;
+        // A part-full tile meets the world through the gas inside it (see InteriorHeat).
+        if (StandsInOwnGas(grid, f))
+        {
+            skinAfter = 0.0;
+            return 0.0;
+        }
 
         double inside = CoreTemperature(grid, f);
         double skin = stored > 0.0 ? stored : inside;
-        double gas = grid.Temperature[g];
+        double gas = grid.GasTemperatureAt(g);
         bool flame = FlameIn(grid, g);
         bool quiet = !flame && Math.Abs(gas - inside) < QuietK;
         if (quiet && Math.Abs(skin - inside) < QuietK)
@@ -306,7 +335,7 @@ public sealed class CombustionSystem : ISimSystem
 
         const double dt = Simulation.SecondsPerTick;
         double area = WorldGrid.TileFaceAreaM2 * Exposed(grid, f);
-        double capacity = grid.HeatCapacity(g);
+        double capacity = grid.HasTwoTemperatures(g) ? grid.GasHeatCapacity(g) : grid.HeatCapacity(g);
         double skinCapacity = _skinCapacity[fuel];
         double s2 = skin * skin, g2 = gas * gas;
         double exchange = (FilmCoefficient * (gas - skin) + SurfaceEmissivity * StefanBoltzmann * (g2 * g2 - s2 * s2)) * area * dt;
@@ -334,7 +363,7 @@ public sealed class CombustionSystem : ISimSystem
     /// </summary>
     public static double CoreTemperature(WorldGrid grid, int i)
     {
-        double total = grid.HeatCapacity(i);
+        double total = grid.HasTwoTemperatures(i) ? grid.CondensedHeatCapacity(i) : grid.HeatCapacity(i);
         if (total <= 0.0 || !grid.HasCondensed(i)) return grid.Temperature[i];
         var def = grid.Materials[grid.Material[i]];
         double layer = def.Density * def.SpecificHeat * SkinDepthM * WorldGrid.TileFaceAreaM2 * Exposed(grid, i);
@@ -362,6 +391,57 @@ public sealed class CombustionSystem : ISimSystem
     /// if its fuel were a cube, the area goes as the fill to the power 2/3.
     /// </summary>
     private static double Exposed(WorldGrid grid, int f) => Math.Pow(Math.Min(1.0, grid.FillFraction(f)), 2.0 / 3.0);
+
+    /// <summary>
+    /// Whether a fuel tile is mostly gas: a post or a heap standing in the air of its own tile,
+    /// which it burns into and is heated by. A fuller tile (a wall, a log) burns on its faces into
+    /// the gas of the tiles beside it, even when a little gas has got in.
+    /// </summary>
+    private static bool StandsInOwnGas(WorldGrid grid, int i) =>
+        grid.FreeVolume(i) >= OwnGasFraction * WorldGrid.TileVolumeM3;
+
+    /// <summary>Free share of a tile above which its fuel burns into the tile's own gas.</summary>
+    private const double OwnGasFraction = 0.5;
+
+    /// <summary>Surface a part-full fuel tile presents to the gas inside it, m²: that of a cube of its volume.</summary>
+    private static double InteriorArea(WorldGrid grid, int f) => 6.0 * WorldGrid.TileFaceAreaM2 * Exposed(grid, f);
+
+    /// <summary>
+    /// The surface temperature of a part-full fuel tile, K: where the flame's flux (if a flame
+    /// burns in the tile's gas), convection and radiation from that gas balance conduction into
+    /// the fuel's core. The surface layer is thin enough to settle within a tick.
+    /// </summary>
+    private double InteriorSurfaceTemperature(WorldGrid grid, int f)
+    {
+        double gas = grid.GasTemperatureAt(f), core = grid.Temperature[f];
+        double skin = _skinConductance[grid.Material[f]];
+        double flux = FlameIn(grid, f) ? FlameHeatFluxWm2 * Math.Max(0.0, OxygenStrength(grid, f)) : 0.0;
+        double Balance(double s)
+        {
+            double g2 = gas * gas, s2 = s * s;
+            return flux + FilmCoefficient * (gas - s) + SurfaceEmissivity * StefanBoltzmann * (g2 * g2 - s2 * s2) - skin * (s - core);
+        }
+        double lo = Math.Min(gas, core), hi = Math.Max(gas, core) + 3000.0;
+        for (int n = 0; n < 40; n++)
+        {
+            double mid = 0.5 * (lo + hi);
+            if (Balance(mid) >= 0.0) lo = mid;
+            else hi = mid;
+        }
+        return 0.5 * (lo + hi);
+    }
+
+    /// <summary>
+    /// Joules the flame burning in a part-full fuel tile's own gas pours onto the fuel this
+    /// tick, paid by that gas; convection and radiation between the two are the thermal
+    /// layer's (see <see cref="ThermalSystem.InteriorExchange"/>).
+    /// </summary>
+    private double InteriorHeat(WorldGrid grid, int f)
+    {
+        if (!_isFuel[grid.Material[f]] || !StandsInOwnGas(grid, f) || !grid.HasTwoTemperatures(f) || !FlameIn(grid, f)) return 0.0;
+        double joules = FlameHeatFluxWm2 * Math.Max(0.0, OxygenStrength(grid, f)) * InteriorArea(grid, f) * Simulation.SecondsPerTick;
+        return Math.Min(joules, grid.GasHeatCapacity(f) * grid.GasTemperature[f] * ShareCap * 0.5);
+    }
 
     /// <summary>Whether any fuel face around gas tile g, or gas inside g's own fuel, is alight.</summary>
     private static bool FlameIn(WorldGrid grid, int g)
@@ -428,7 +508,8 @@ public sealed class CombustionSystem : ISimSystem
         if (_dFuel.Length != grid.Count)
         {
             _dFuel = new double[grid.Count];
-            _dEnergy = new double[grid.Count];
+            _dEnergyC = new double[grid.Count];
+            _dEnergyG = new double[grid.Count];
             _changed = new bool[grid.Count];
             _flame = new byte[grid.Count];
             _skin = new double[grid.Count * 6];

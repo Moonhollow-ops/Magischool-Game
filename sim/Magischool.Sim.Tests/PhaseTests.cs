@@ -84,7 +84,8 @@ public class PhaseTests
             if (firstWater < 0 && grid.Material[0] == Water) firstWater = sim.Tick;
             if (firstAllSteam < 0 && !grid.HasCondensed(0)) firstAllSteam = sim.Tick;
             if (grid.LatentEnergy[0] > 0 && grid.Material[0] == Ice) meltPlateauTicks++;
-            if (grid.Material[0] == Water && grid.Temperature[0] == Boil) boilPlateauTicks++;
+            // At the boiling point to rounding: the water and its steam keep separate energy books.
+            if (grid.Material[0] == Water && Math.Abs(grid.Temperature[0] - Boil) < 1e-9) boilPlateauTicks++;
             Assert.True(sim.Tick < 10_000, "never finished boiling");
         }
 
