@@ -57,8 +57,22 @@ public class BodyTests
     }
 
     private static double Ledger(Simulation sim) =>
-        EnergyAudit.TotalJoules(sim) - Sys<EtherSystem>(sim).ReservoirInJ - Sys<StructureSystem>(sim).ReleasedPotentialJ
-        - Sys<BodySystem>(sim).ReleasedPotentialJ;
+        EnergyAudit.TotalJoules(sim) + sim.EtherMatterKg * Magic.Spellcasting.EtherPerKg - Sys<EtherSystem>(sim).ReservoirInJ
+        - Sys<StructureSystem>(sim).ReleasedPotentialJ - Sys<BodySystem>(sim).ReleasedPotentialJ;
+
+    private static int Part(Body body, string name)
+    {
+        int p = body.Anatomy.IndexOf(name);
+        Assert.True(p >= 0, $"no part '{name}'");
+        return p;
+    }
+
+    /// <summary>Kills a part outright: every cell in it dead, as if burned through.</summary>
+    private static void Destroy(Body body, string name)
+    {
+        int p = Part(body, name);
+        for (int n = body.Anatomy.LayerStart[p]; n < body.Anatomy.LayerStart[p + 1]; n++) body.Burn[n] = 50.0;
+    }
 
     private static double MassOf(Simulation sim)
     {
@@ -79,6 +93,9 @@ public class BodyTests
         EtherSystem.Balance(grid);
         return new Simulation("body-test", grid, Table, StandardSystems.Create(openSky: true, skyTemperatureK: airK));
     }
+
+    /// <summary>A closed room, 1.5 m square, sealed from the sky: nothing comes or goes, so every joule can be counted.</summary>
+    private static Simulation Closed3() => Start(Ground(3, 3, 7), Room);
 
     [Fact]
     public void AClothedStudentKeepsWarmInAComfortableRoom()
@@ -194,10 +211,10 @@ public class BodyTests
         double before = Ledger(sim);
         sim.Enqueue(new Magic.CastFireball(1, 1, 3, 1, 0, 0, 300_000));
         sim.Step(30);
-        int torsoSkin = body.Plan.LayerStart[body.Plan.TorsoPart];
-        _out.WriteLine($"torso skin {body.Temperature[torsoSkin] - 273.15:F0} C burn {body.Burn[torsoSkin]:G3} necrosis {body.Necrosis(torsoSkin):F2} dead skin {body.DeadSkinShare:P1}");
-        Assert.True(body.Necrosis(torsoSkin) > 0.5);
-        Assert.True(body.Necrosis(body.Plan.LayerStart[body.Plan.TorsoPart] + 4) < 0.01, "the burn went to the organs");
+        int chestSkin = body.Anatomy.LayerStart[Part(body, "chest")];
+        _out.WriteLine($"chest skin {body.Temperature[chestSkin] - 273.15:F0} C burn {body.Burn[chestSkin]:G3} necrosis {body.Necrosis(chestSkin):F2} dead skin {body.DeadSkinShare:P1}");
+        Assert.True(body.Necrosis(chestSkin) > 0.5);
+        Assert.True(body.Health(Part(body, "heart")) > 0.99, "the burn went to the heart");
         Assert.True(body.Alive);
         Assert.Equal(before, Ledger(sim), Math.Abs(before) * 1e-11);
     }
@@ -211,10 +228,13 @@ public class BodyTests
         var body = Spawn(sim, 1, 1, 1 + tiles);
         double before = Ledger(sim), mass = MassOf(sim);
         sim.Step(40);
+        Assert.Single(sim.Bodies);
         Assert.Equal(1, body.Z);
-        double legs = body.Trauma[6];
-        _out.WriteLine($"from {tiles * 0.5} m: legs {legs:F2} thighs {body.Trauma[4]:F2} torso {body.Trauma[1]:F2} head {body.Trauma[0]:F2}");
+        double legs = body.Trauma[Part(body, "left shin")];
+        _out.WriteLine($"from {tiles * 0.5} m: shins {legs:F2} thighs {body.Trauma[Part(body, "left thigh")]:F2} abdomen {body.Trauma[Part(body, "abdomen")]:F2} " +
+                       $"liver {body.Trauma[Part(body, "liver")]:F2} neck {body.Trauma[Part(body, "neck")]:F2} head {body.Trauma[Part(body, "head")]:F2} brain {body.Trauma[Part(body, "brain")]:F2}");
         Assert.Equal(breaks, legs >= 1.0);
+        Assert.Equal(!breaks, BodySystem.CanWalk(body));
         Assert.True(body.Alive);
         Assert.Equal(before, Ledger(sim), Math.Abs(before) * 1e-11);
         Assert.Equal(mass, MassOf(sim), mass * 1e-12);
@@ -230,7 +250,7 @@ public class BodyTests
         sim.Activity.WakeAll();
         double before = Ledger(sim);
         sim.Step(60);
-        _out.WriteLine($"head trauma {body.Trauma[0]:F2} alive {body.Alive} cause {body.Cause}");
+        _out.WriteLine($"head trauma {body.Trauma[Part(body, "head")]:F2} brain {body.Trauma[Part(body, "brain")]:F2} alive {body.Alive} cause {body.Cause}");
         Assert.False(body.Alive);
         Assert.Equal(CauseOfDeath.BrainInjury, body.Cause);
         Assert.Equal(before, Ledger(sim), Math.Abs(before) * 1e-11);
@@ -284,10 +304,213 @@ public class BodyTests
         var body = Spawn(sim, 1, 1, 1);
         body.Alive = false;
         body.HeartStopped = true;
-        double start = body.Temperature[body.Plan.VisceraNode];
+        int belly = body.Anatomy.Inner(Part(body, "abdomen")), liver = body.Anatomy.Inner(Part(body, "liver"));
+        int skin = body.Anatomy.LayerStart[Part(body, "chest")];
+        double start = body.Temperature[belly], liverStart = body.Temperature[liver], skinStart = body.Temperature[skin];
         sim.Step(36_000);
-        double drop = start - body.Temperature[body.Plan.VisceraNode];
-        _out.WriteLine($"core organs cooled {drop:F2} K in an hour, skin {body.MeanSkinTemperature - 273.15:F1}");
-        Assert.InRange(drop, 0.2, 3.0);
+        double drop = start - body.Temperature[belly], liverDrop = liverStart - body.Temperature[liver];
+        _out.WriteLine($"in an hour the belly cooled {drop:F2} K, the liver {liverDrop:F2} K, the chest's skin {skinStart - body.Temperature[skin]:F2} K");
+        // The core holds its heat for the first hours (the post-mortem plateau), the deepest organs longest.
+        Assert.InRange(drop, 0.02, 3.0);
+        Assert.True(liverDrop < drop + 0.05);
+        Assert.True(skinStart - body.Temperature[skin] > drop);
+    }
+
+    [Fact]
+    public void AStudentSeesWithEitherEyeAndNotWithNeither()
+    {
+        var sim = Room3();
+        var body = Spawn(sim, 1, 1, 1);
+        Assert.Equal(1.0, body.Vision, 3);
+        Destroy(body, "left eye");
+        Assert.Equal(1.0, body.Vision, 3);
+        Destroy(body, "right eye");
+        Assert.Equal(0.0, body.Vision, 3);
+        Assert.True(body.Conscious);
+    }
+
+    [Fact]
+    public void OneLungIsEnoughButNoneIsNot()
+    {
+        var one = Room3();
+        var body = Spawn(one, 1, 1, 1);
+        one.Bodies[0].Trauma[Part(body, "left lung")] = 1.0;
+        one.Step(3000);
+        Report(one, body, "one lung");
+        Assert.True(body.Conscious);
+        Assert.Equal(0.5, body.FunctionLevel(PartFunction.Lung), 3);
+
+        var none = Room3();
+        var other = Spawn(none, 1, 1, 1);
+        other.Trauma[Part(other, "left lung")] = 1.0;
+        other.Trauma[Part(other, "right lung")] = 1.0;
+        double unconscious = -1;
+        while (other.Alive && none.ElapsedSeconds < 1200)
+        {
+            none.Step(10);
+            if (unconscious < 0 && !other.Conscious) unconscious = none.ElapsedSeconds;
+        }
+        _out.WriteLine($"no lungs: unconscious at {unconscious} s, dead at {none.ElapsedSeconds} s");
+        Assert.InRange(unconscious, 20, 240);
+        Assert.False(other.Alive);
+        Assert.Equal(CauseOfDeath.Hypoxia, other.Cause);
+    }
+
+    [Fact]
+    public void ABrokenNeckStopsTheBreathAndTheLegs()
+    {
+        var sim = Room3();
+        var body = Spawn(sim, 1, 1, 1);
+        body.Trauma[Part(body, "neck")] = 1.0;
+        Assert.False(BodySystem.CanWalk(body));
+        while (body.Alive && sim.ElapsedSeconds < 1200) sim.Step(50);
+        _out.WriteLine($"dead at {sim.ElapsedSeconds} s of {body.Cause}");
+        Assert.False(body.Alive);
+        Assert.Equal(CauseOfDeath.Hypoxia, body.Cause);
+    }
+
+    [Fact]
+    public void AHandCutOffIsRemainsAndEveryGramIsKept()
+    {
+        var sim = Closed3();
+        var body = Spawn(sim, 1, 1, 1);
+        sim.Step(100);
+        double before = Ledger(sim), mass = MassOf(sim);
+        int parts = body.Anatomy.Parts.Length;
+        var hand = BodySystem.Sever(sim, body, Part(body, "left hand"));
+        Assert.Equal(parts - 1, body.Anatomy.Parts.Length);
+        Assert.Equal(-1, body.Anatomy.IndexOf("left hand"));
+        Assert.Single(hand.Anatomy.Parts);
+        Assert.True(hand.IsRemains);
+        Assert.False(hand.Alive);
+        Assert.Equal(body.Z + 2, hand.Z);
+        Assert.Equal(before, Ledger(sim), Math.Abs(before) * 1e-12);
+        Assert.Equal(mass, MassOf(sim), mass * 1e-12);
+        Assert.True(body.Bleed[Part(body, "left forearm")] > 0.0);
+        Assert.Equal(0.5, body.FunctionLevel(PartFunction.Hand), 3);
+
+        double handStart = hand.Temperature[hand.Anatomy.Inner(0)];
+        sim.Step(3000);
+        Report(sim, body, "one-handed");
+        double handK = hand.Temperature[hand.Anatomy.Inner(0)];
+        _out.WriteLine($"hand fell to z={hand.Z}, its bone at {handK - 273.15:F1} C; blood {body.BloodKg:F2} kg");
+        Assert.Equal(1, hand.Z);
+        Assert.True(handK < handStart - 0.2, "the cut-off hand cools");
+        Assert.True(body.Alive && body.Conscious);
+        Assert.True(body.BloodKg < body.Plan.BloodKg - 0.05, "the stump bled");
+        Assert.Equal(before, Ledger(sim), Math.Abs(before) * 1e-11);
+        Assert.Equal(mass, MassOf(sim), mass * 1e-12);
+
+        var restored = Persistence.Snapshot.FromBytes(Persistence.Snapshot.ToBytes(sim), Table, StandardSystems.Create(openSky: false));
+        Assert.Equal(sim.StateHash(), restored.StateHash());
+        sim.Step(100);
+        restored.Step(100);
+        Assert.Equal(sim.StateHash(), restored.StateHash());
+    }
+
+    [Fact]
+    public void ACrushingBlowTearsALimbOff()
+    {
+        var sim = Room3();
+        var body = Spawn(sim, 1, 1, 1);
+        BodySystem.Impact(body, Part(body, "right forearm"), 1.0e5);
+        sim.Step(1);
+        Assert.Equal(-1, body.Anatomy.IndexOf("right forearm"));
+        Assert.Equal(-1, body.Anatomy.IndexOf("right hand"));
+        var arm = sim.Bodies.Last();
+        Assert.Equal(2, arm.Anatomy.Parts.Length);
+        Assert.True(arm.IsRemains);
+    }
+
+    [Fact]
+    public void AHeadCutOffTakesTheLifeWithIt()
+    {
+        var sim = Room3();
+        var body = Spawn(sim, 1, 1, 1);
+        var head = BodySystem.Sever(sim, body, Part(body, "head"));
+        sim.Step(1);
+        Assert.True(body.IsRemains);
+        Assert.False(body.Alive);
+        Assert.Equal(CauseOfDeath.Dismembered, body.Cause);
+        Assert.False(head.IsRemains);
+        Assert.False(head.Conscious);
+        while (head.Alive && sim.ElapsedSeconds < 1200) sim.Step(50);
+        Assert.False(head.Alive);
+        Assert.Equal(CauseOfDeath.Hypoxia, head.Cause);
+    }
+
+    [Fact]
+    public void AThirdEyeGrownFromEtherSees()
+    {
+        var sim = Closed3();
+        var body = Spawn(sim, 1, 1, 1);
+        double before = Ledger(sim), mass = MassOf(sim) - sim.EtherMatterKg;
+        sim.Enqueue(new Magic.CastGraft(0, 0, 2, body.Id, "left eye", "head", "third eye"));
+        sim.Step(1);
+        int eye = Part(body, "third eye");
+        Assert.Equal(PartFunction.Eye, body.Anatomy.Parts[eye].Function);
+        Assert.Equal(0.0075, sim.EtherMatterKg, 12);
+        Assert.InRange(body.Temperature[body.Anatomy.LayerStart[eye]], 305.0, 312.0);
+        Assert.Equal(before, Ledger(sim), Math.Abs(before) * 1e-11);
+        Assert.Equal(mass, MassOf(sim) - sim.EtherMatterKg, mass * 1e-12);
+
+        Destroy(body, "left eye");
+        Destroy(body, "right eye");
+        Assert.Equal(1.0, body.Vision, 2);
+        Assert.Equal(0.5, body.FunctionLevel(PartFunction.Eye), 2);
+
+        sim.Step(600);
+        var restored = Persistence.Snapshot.FromBytes(Persistence.Snapshot.ToBytes(sim), Table, StandardSystems.Create(openSky: false));
+        Assert.Equal(sim.StateHash(), restored.StateHash());
+        Assert.Equal(eye, restored.Bodies[0].Anatomy.IndexOf("third eye"));
+        sim.Step(100);
+        restored.Step(100);
+        Assert.Equal(sim.StateHash(), restored.StateHash());
+        Assert.Equal(before, Ledger(sim), Math.Abs(before) * 1e-11);
+    }
+
+    [Fact]
+    public void ATransmutedLayerKeepsItsEnergy()
+    {
+        var sim = Closed3();
+        var body = Spawn(sim, 1, 1, 1);
+        double before = Ledger(sim);
+        int hand = Part(body, "right hand");
+        BodySystem.ChangeTissue(sim, body, hand, 2, Tissue.Bone);
+        Assert.Equal(Tissue.Bone, body.Anatomy.NodeTissue[body.Anatomy.LayerStart[hand] + 2]);
+        Assert.Equal(before, Ledger(sim), Math.Abs(before) * 1e-12);
+        sim.Step(300);
+        Assert.Equal(before, Ledger(sim), Math.Abs(before) * 1e-11);
+    }
+
+    [Fact]
+    public void FailedKidneysLetPoisonBuild()
+    {
+        var sim = Room3();
+        var body = Spawn(sim, 1, 1, 1);
+        body.Trauma[Part(body, "left kidney")] = 1.0;
+        body.Trauma[Part(body, "right kidney")] = 1.0;
+        double bladder = body.BladderKg;
+        sim.Step(6000);
+        _out.WriteLine($"toxins {body.Toxins:G3} after 10 min, bladder {body.BladderKg - bladder:G3} kg");
+        Assert.Equal(600.0 / BodySystem.ToxinSeconds, body.Toxins, 1e-6);
+        Assert.Equal(bladder, body.BladderKg, 12);
+        body.Toxins = 0.9999;
+        sim.Step(1000);
+        Assert.True(body.HeartStopped);
+    }
+
+    [Fact]
+    public void WithoutTeethItEatsSlowly()
+    {
+        var grid = Ground(4, 3, 7);
+        var bread = Table.Id(BuiltInMaterials.Bread);
+        grid.SetCondensed(grid.Index(2, 1, 1), bread, 0.5);
+        var sim = Start(grid, Room);
+        var body = Spawn(sim, 1, 1, 1);
+        Destroy(body, "teeth");
+        sim.Enqueue(new EatFood(body.Id, 2, 1, 1, 0.25));
+        sim.Step(1);
+        Assert.Equal(0.05, body.GutCarbKg + body.GutWaterKg, 1e-3);
     }
 }

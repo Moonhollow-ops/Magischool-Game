@@ -113,3 +113,20 @@ bleed onto the floor, and need sleep. Every joule and gram is counted with
 the world's. In the viewer, P places a student, the arrow keys walk them, T
 eats or drinks from the hovered tile, and Z puts them to sleep.
 
+Bodies are then made of parts instead of one skin over a few blocks. A
+student is a tree of 27 parts: limbs down to hands and feet, a head with two
+eyes and teeth, and organs inside (heart, two lungs, liver, gut, two kidneys,
+brain), each with its own tissue and its own job. A part works as well as its
+tissue is whole, so injuries are lost functions: with one lung a student
+breathes harder and is fine, with none they faint in about two minutes; a
+broken neck stops the breath and the legs; failed kidneys build up poisons
+over days until the heart stops; without teeth they eat a fifth as fast; with
+both eyes gone they are blind. A blow is shared by mass with the organs under
+it, so crushing a skull kills through the brain and crushing a chest through
+the heart. A part torn off (25 times what breaks it) becomes remains, a body
+of its own with its tissue and energy, which cools on the floor while the
+stump bleeds; a head cut off takes the life with it. Parts are data in each
+body, so a mutation can change a layer's tissue, and CastGraft grows a new
+part from ether at 10 MJ a kilogram: a third eye sees when the other two are
+gone. In the viewer, Y grows an eye on the student from the caster.
+

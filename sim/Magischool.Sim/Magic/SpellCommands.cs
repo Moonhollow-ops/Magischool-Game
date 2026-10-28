@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Magischool.Sim.Bodies;
 using Magischool.Sim.Core;
 
 namespace Magischool.Sim.Magic;
@@ -168,4 +169,60 @@ public sealed record CastConjure(int CasterX, int CasterY, int CasterZ, int Targ
 
     internal static CastConjure ReadFrom(BinaryReader r) =>
         new(r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadUInt16(), r.ReadDouble());
+}
+
+/// <summary>
+/// Grows a new part on a body within the caster's reach, crystallised from ether: a copy of the
+/// body's kind's part <paramref name="Template"/> (an eye, a hand, a lung), named
+/// <paramref name="Name"/> and attached to its part <paramref name="Parent"/>, an organ inside it if
+/// the template is one. Each kilogram costs <see cref="Spellcasting.EtherPerKg"/> plus the heat it
+/// holds at the body's core temperature (and its fat's chemical energy). It takes the whole part or
+/// nothing: what was gathered goes back if the field can't give it all. Once grown, it is living
+/// tissue like the rest, and works as such a part does.
+/// </summary>
+public sealed record CastGraft(int CasterX, int CasterY, int CasterZ, int BodyId, string Template, string Parent, string Name) : WorldCommand
+{
+    internal const byte TagValue = 14;
+    internal override byte Tag => TagValue;
+
+    public override void Apply(Simulation sim)
+    {
+        Body? body = null;
+        foreach (var b in sim.Bodies)
+            if (b.Id == BodyId) body = b;
+        if (body == null || !sim.Grid.InBounds(CasterX, CasterY, CasterZ)) return;
+        int reach = (int)(Spellcasting.GatherRadiusM / WorldGrid.TileSizeM);
+        if (Math.Abs(body.X - CasterX) > reach || Math.Abs(body.Y - CasterY) > reach
+            || CasterZ < body.Z - reach || CasterZ > body.Z + body.HeightTiles - 1 + reach) return;
+        var template = body.Plan.Part(Template);
+        int parent = body.Anatomy.IndexOf(Parent);
+        if (template == null || parent < 0 || Name.Length == 0 || body.Anatomy.IndexOf(Name) >= 0) return;
+
+        var part = template with { Name = Name, Parent = Parent, Dz = body.Anatomy.Parts[body.Anatomy.OuterOf(parent)].Dz };
+        var w = Physiology.For(sim.Materials);
+        double kg = 0.0;
+        foreach (var (_, layerKg) in part.Layers) kg += layerKg;
+        double heat = BodySystem.FreshPartJoules(w, part, body.BloodTemperature);
+        double cost = kg * Spellcasting.EtherPerKg + heat;
+        double got = Spellcasting.Gather(sim, CasterX, CasterY, CasterZ, cost);
+        if (got < cost * (1.0 - 1e-12))
+        {
+            Spellcasting.Release(sim, CasterX, CasterY, CasterZ, got);
+            return;
+        }
+        BodySystem.Attach(sim, body, part, got - kg * Spellcasting.EtherPerKg);
+        sim.EtherMatterKg += kg;
+        sim.Activity.WakeAround(body.X, body.Y, body.Z);
+    }
+
+    internal override void Write(BinaryWriter writer)
+    {
+        writer.Write(Tag);
+        writer.Write(CasterX); writer.Write(CasterY); writer.Write(CasterZ);
+        writer.Write(BodyId);
+        writer.Write(Template); writer.Write(Parent); writer.Write(Name);
+    }
+
+    internal static CastGraft ReadFrom(BinaryReader r) =>
+        new(r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadString(), r.ReadString(), r.ReadString());
 }

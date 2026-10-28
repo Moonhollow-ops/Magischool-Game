@@ -51,7 +51,7 @@ public sealed record SpawnBody(int X, int Y, int Z, string Plan, double Clothing
 
     /// <summary>Whether tile (x, y, z) is within arm's reach of a body: beside its column, from its feet's level below to just over its head.</summary>
     internal static bool InReach(Body body, int x, int y, int z) =>
-        Math.Abs(x - body.X) <= 1 && Math.Abs(y - body.Y) <= 1 && z >= body.Z - 1 && z <= body.Z + body.Plan.HeightTiles;
+        Math.Abs(x - body.X) <= 1 && Math.Abs(y - body.Y) <= 1 && z >= body.Z - 1 && z <= body.Z + body.HeightTiles;
 }
 
 /// <summary>
@@ -103,7 +103,10 @@ public sealed record EatFood(int Id, int X, int Y, int Z, double Kg) : WorldComm
         double carbShare = StarchShare(def);
         if (carbShare <= 0.0) return;
         double room = body.Plan.GutMaxKg - body.GutCarbKg - body.GutWaterKg;
-        double kg = Math.Min(Math.Min(Kg, room), grid.Mass[i]);
+        if (!(body.FunctionLevel(PartFunction.Gut) > 0.0)) return;
+        // Without teeth it can only gum soft mouthfuls: a fifth as much at a time.
+        double bite = Kg * Math.Clamp(body.FunctionLevel(PartFunction.Teeth), 0.2, 1.0);
+        double kg = Math.Min(Math.Min(bite, room), grid.Mass[i]);
         if (!(kg > 0.0)) return;
 
         var w = Physiology.For(sim.Materials);
@@ -115,7 +118,7 @@ public sealed record EatFood(int Id, int X, int Y, int Z, double Kg) : WorldComm
         body.GutWaterJ += water * w.WaterJPerKg;
         body.GutCarbKg += kg - water;
         body.GutCarbJ += atBody - water * w.WaterJPerKg;
-        Physiology.Heat(body, body.Plan.VisceraNode, joules - atBody);
+        BodySystem.HeatParts(body, PartFunction.Gut, joules - atBody);
         sim.Activity.WakeAround(X, Y, Z);
     }
 
@@ -181,13 +184,14 @@ public sealed record DrinkWater(int Id, int X, int Y, int Z, double Kg) : WorldC
         int i = grid.Index(X, Y, Z);
         if (!grid.HasCondensed(i) || !grid.Materials[grid.Material[i]].Potable) return;
         double room = body.Plan.GutMaxKg - body.GutCarbKg - body.GutWaterKg;
+        if (!(body.FunctionLevel(PartFunction.Gut) > 0.0)) return;
         double kg = Math.Min(Math.Min(Kg, room), grid.Mass[i]);
         if (!(kg > 0.0)) return;
         var w = Physiology.For(sim.Materials);
         double joules = EatFood.Take(grid, i, kg);
         body.GutWaterKg += kg;
         body.GutWaterJ += kg * w.WaterJPerKg;
-        Physiology.Heat(body, body.Plan.VisceraNode, joules - kg * w.WaterJPerKg);
+        BodySystem.HeatParts(body, PartFunction.Gut, joules - kg * w.WaterJPerKg);
         sim.Activity.WakeAround(X, Y, Z);
     }
 

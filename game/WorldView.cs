@@ -132,6 +132,10 @@ public partial class WorldView : Node2D
                 _sim.Enqueue(new DrinkWater(eater.Id, _hoverX, _hoverY, _z, MouthfulKg));
                 SpendTicks(TicksPerWaitAction);
                 break;
+            case Key.Y when Steered() is { } grown:
+                // Grows another eye on the student's head, from the caster's ether.
+                Cast(new CastGraft(_casterX, _casterY, _casterZ, grown.Id, "left eye", "head", $"eye {grown.Anatomy.Parts.Length}"));
+                break;
             case Key.Z when Steered() is { } sleeper:
                 _sim.Enqueue(new SetAsleep(sleeper.Id, !sleeper.Asleep));
                 SpendTicks(TicksPerWaitAction);
@@ -238,10 +242,12 @@ public partial class WorldView : Node2D
             DrawArc(new Vector2((_casterX + 0.5f) * TileSize, (_casterY + 0.5f) * TileSize), TileSize * 0.4f, 0f, MathF.Tau, 16, CasterColor, 2f);
         foreach (var body in _sim.Bodies)
         {
-            if (_z < body.Z || _z >= body.Z + body.Plan.HeightTiles) continue;
+            if (_z < body.Z || _z >= body.Z + body.HeightTiles) continue;
             var centre = new Vector2((body.X + 0.5f) * TileSize, (body.Y + 0.5f) * TileSize);
             var color = !body.Alive ? new Color(0.5f, 0.5f, 0.5f) : body.Conscious ? new Color(0.95f, 0.8f, 0.65f) : new Color(0.95f, 0.5f, 0.3f);
-            DrawCircle(centre, TileSize * (_z - body.Z == body.Plan.Parts[body.Plan.HeadPart].Dz ? 0.3f : 0.4f), color);
+            var anatomy = body.Anatomy;
+            bool head = anatomy.BrainPart >= 0 && _z - body.Z == anatomy.Parts[anatomy.OuterOf(anatomy.BrainPart)].Dz;
+            DrawCircle(centre, TileSize * (body.IsRemains ? 0.2f : head ? 0.3f : 0.4f), color);
             if (body.Id == _bodyId) DrawArc(centre, TileSize * 0.48f, 0f, MathF.Tau, 16, Colors.White, 1.5f);
         }
         foreach (var bolt in _sim.Projectiles)
@@ -256,7 +262,7 @@ public partial class WorldView : Node2D
             $"seed '{_sim.Seed}'   tick {_sim.Tick} ({_sim.ElapsedSeconds:0.0} s)   z {_z}/{grid.Depth - 1}   view {mode}   brush {_materials[_brush].Name}",
             fontSize: 16);
         DrawString(font, new Vector2(4, hudY + 22),
-            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | S stress | M ether | C caster F fireball X freeze V heat G charge B conjure | P student, arrows step, T eat/drink, Z sleep | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
+            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | S stress | M ether | C caster F fireball X freeze V heat G charge B conjure | P student, arrows step, T eat/drink, Z sleep, Y grow an eye | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
             fontSize: 13, modulate: new Color(0.7f, 0.7f, 0.7f));
         if (_status.Length > 0)
             DrawString(font, new Vector2(4, hudY + 42), _status, fontSize: 13, modulate: new Color(1f, 0.85f, 0.4f));
@@ -294,25 +300,34 @@ public partial class WorldView : Node2D
     private Body? BodyAt(int x, int y)
     {
         foreach (var body in _sim.Bodies)
-            if (body.X == x && body.Y == y && _z >= body.Z && _z < body.Z + body.Plan.HeightTiles) return body;
+            if (body.X == x && body.Y == y && _z >= body.Z && _z < body.Z + body.HeightTiles) return body;
         return null;
     }
 
     /// <summary>One line on how a body is: its core and skin, what it feels, and the worst of its injuries.</summary>
     private static string DescribeBody(Body b)
     {
+        var parts = b.Anatomy.Parts;
+        if (b.IsRemains)
+        {
+            string names = string.Join(", ", Array.ConvertAll(parts, part => part.Name));
+            return $"Remains ({names})  {Physiology.Kg(b):0.00} kg  {b.Temperature[b.Anatomy.Inner(0)] - 273.15:0.0} °C";
+        }
         string state = !b.Alive ? $"dead ({b.Cause})" : b.HeartStopped ? "heart stopped" : b.Asleep ? "asleep" : b.Conscious ? "awake" : "unconscious";
         int worst = 0;
         double worstHurt = 0.0;
-        for (int p = 0; p < b.Plan.Parts.Length; p++)
+        for (int p = 0; p < parts.Length; p++)
         {
-            double hurt = Math.Max(b.Trauma[p], b.Necrosis(b.Plan.LayerStart[p]));
+            double hurt = Math.Max(1.0 - b.Health(p), b.Necrosis(b.Anatomy.LayerStart[p]));
             if (hurt > worstHurt) { worstHurt = hurt; worst = p; }
         }
-        string injury = worstHurt > 0.05 ? $"  worst hurt: {b.Plan.Parts[worst].Name} {Math.Min(worstHurt, 1.0):P0}" : "";
+        string injury = worstHurt > 0.05 ? $"  worst hurt: {parts[worst].Name} {Math.Min(worstHurt, 1.0):P0}" : "";
+        int missing = b.Plan.Parts.Length - parts.Length;
+        string body = (missing > 0 ? $"  {missing} parts missing" : missing < 0 ? $"  {-missing} extra parts" : "")
+                      + (b.Vision < 0.99 && b.Conscious ? $"  sight {b.Vision:P0}" : "") + (b.Toxins > 0.01 ? $"  poisoned {b.Toxins:P0}" : "");
         return $"Student {b.Id} {state}  core {b.BloodTemperature - 273.15:0.0} °C  skin {b.MeanSkinTemperature - 273.15:0.0} °C  " +
                $"{b.MetabolicW:0} W  oxygen {b.OxygenFraction:P0}  blood {b.BloodFraction:P0}  hunger {b.Hunger:P0}  thirst {b.Thirst:P0}  fatigue {b.Fatigue:P0}" +
-               $"{(b.ShiverW > 1 ? "  shivering" : "")}{(b.SweatKgPerS > 1e-6 ? "  sweating" : "")}{injury}";
+               $"{(b.ShiverW > 1 ? "  shivering" : "")}{(b.SweatKgPerS > 1e-6 ? "  sweating" : "")}{injury}{body}";
     }
 
     private StructureSystem? Structure()
