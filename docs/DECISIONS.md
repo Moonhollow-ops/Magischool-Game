@@ -4,6 +4,29 @@ The running record of what has been decided, newest first. Anything here is
 settled until the owner says otherwise; open questions live in
 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
 
+## 2026-10-28: Where spell energy comes from
+
+From the owner: spell energy exists in the environment, and different places
+hold different amounts of potential. A caster gathers magic from the
+environment to cast. Ordinary casting does not use that magic up; only large
+ritual magic does.
+
+How the ether field (layer 7) honours this while still conserving energy:
+
+- Every place has an ether potential set by its surroundings (materials,
+  geography, ley lines and the like), so some places are rich in magic and
+  others poor.
+- Casting draws charge from the field around the caster, and that charge is
+  what becomes the spell's heat, force or matter, counted joule for joule.
+- The field refills from a deep reservoir beneath the world, the way the open
+  sky refills the air. Each place refills toward its own potential at a
+  limited rate. Everything that crosses that boundary is counted, so the
+  total of world plus reservoir never changes.
+- An ordinary spell takes far less than a place refills, so the place's
+  magic is effectively never used up.
+- A large ritual draws faster than the place can refill, so it drains the
+  local field, and that place stays depleted until it recovers.
+
 ## 2026-10-27: Magic is thermodynamics
 
 From the owner: spells are never scripted effects. A spell is energy and
