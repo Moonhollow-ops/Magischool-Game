@@ -55,6 +55,12 @@ public sealed class Simulation
     /// <summary>Spells in flight, in the order they were cast. Part of the world state.</summary>
     public List<Projectile> Projectiles { get; } = new();
 
+    /// <summary>Bodies in the world, in the order they came into it. Part of the world state.</summary>
+    public List<Bodies.Body> Bodies { get; } = new();
+
+    /// <summary>Id the next body brought into the world gets.</summary>
+    public int NextBodyId { get; internal set; } = 1;
+
     /// <summary>
     /// Net matter crystallised out of the ether since this simulation was created, kg: conjured
     /// matter less etherium burned. The world's mass less this never changes.

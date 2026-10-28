@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Godot;
+using Magischool.Sim.Bodies;
 using Magischool.Sim.Core;
 using Magischool.Sim.Fluids;
 using Magischool.Sim.Magic;
@@ -21,6 +22,8 @@ namespace Magischool.Game;
 /// Spells (all drawn from the ether around the caster): C: stand the caster on the hovered tile ·
 /// F: fireball at the hovered tile · X: freeze it · V: heat it · G: pour charge into it ·
 /// B: conjure 5 kg of the brush material into it
+/// Bodies: P: a student stands on the hovered tile (and becomes the one you steer) ·
+/// arrow keys: they step · T: they eat or drink from the hovered tile · Z: they sleep or wake
 /// F5: save · F9: load · R: new seed · Hover a tile to read its contents
 /// </summary>
 public partial class WorldView : Node2D
@@ -49,6 +52,10 @@ public partial class WorldView : Node2D
     private const double HeatJoules = 5_000_000;
     private const double ChargeJoules = 20_000_000;
     private const double ConjureKg = 5.0;
+    private const double MouthfulKg = 0.25;
+
+    /// <summary>The body the arrow keys steer: the last one placed.</summary>
+    private int _bodyId = -1;
 
     public override void _Ready()
     {
@@ -109,19 +116,55 @@ public partial class WorldView : Node2D
             case Key.V: Cast(new CastHeat(_casterX, _casterY, _casterZ, _hoverX, _hoverY, _z, HeatJoules)); break;
             case Key.G: Cast(new CastCharge(_casterX, _casterY, _casterZ, _hoverX, _hoverY, _z, ChargeJoules)); break;
             case Key.B: Cast(new CastConjure(_casterX, _casterY, _casterZ, _hoverX, _hoverY, _z, _brush, ConjureKg)); break;
+            case Key.P when _sim.Grid.InBounds(_hoverX, _hoverY, _z):
+                int id = _sim.NextBodyId;
+                _sim.Enqueue(new SpawnBody(_hoverX, _hoverY, _z, BodyPlans.Human.Key));
+                SpendTicks(TicksPerWaitAction);
+                if (_sim.NextBodyId > id) _bodyId = id;
+                _status = _sim.NextBodyId > id ? $"Student {id} stands at ({_hoverX},{_hoverY},{_z})" : "No room to stand there";
+                break;
+            case Key.Left: Steer(-1, 0); break;
+            case Key.Right: Steer(1, 0); break;
+            case Key.Up: Steer(0, -1); break;
+            case Key.Down: Steer(0, 1); break;
+            case Key.T when Steered() is { } eater && _sim.Grid.InBounds(_hoverX, _hoverY, _z):
+                _sim.Enqueue(new EatFood(eater.Id, _hoverX, _hoverY, _z, MouthfulKg));
+                _sim.Enqueue(new DrinkWater(eater.Id, _hoverX, _hoverY, _z, MouthfulKg));
+                SpendTicks(TicksPerWaitAction);
+                break;
+            case Key.Z when Steered() is { } sleeper:
+                _sim.Enqueue(new SetAsleep(sleeper.Id, !sleeper.Asleep));
+                SpendTicks(TicksPerWaitAction);
+                break;
             case Key.F5: Save(); break;
             case Key.F9: Load(); break;
             case >= Key.Key1 and <= Key.Key9:
-                ushort id = (ushort)(key.Keycode - Key.Key1);
-                if (id < _materials.Count)
+                ushort material = (ushort)(key.Keycode - Key.Key1);
+                if (material < _materials.Count)
                 {
-                    _brush = id;
-                    _status = $"Brush: {_materials[id].Name}";
+                    _brush = material;
+                    _status = $"Brush: {_materials[material].Name}";
                 }
                 break;
             default: return;
         }
         QueueRedraw();
+    }
+
+    private Body? Steered()
+    {
+        foreach (var body in _sim.Bodies)
+            if (body.Id == _bodyId) return body;
+        return null;
+    }
+
+    /// <summary>A step takes half a second; the view follows the body's feet.</summary>
+    private void Steer(int dx, int dy)
+    {
+        if (Steered() is not { } body) return;
+        _sim.Enqueue(new MoveBody(body.Id, dx, dy));
+        SpendTicks(Simulation.TicksPerSecond / 2);
+        _z = body.Z;
     }
 
     /// <summary>Casting takes a tick, like any action.</summary>
@@ -193,6 +236,14 @@ public partial class WorldView : Node2D
         }
         if (_casterZ == _z)
             DrawArc(new Vector2((_casterX + 0.5f) * TileSize, (_casterY + 0.5f) * TileSize), TileSize * 0.4f, 0f, MathF.Tau, 16, CasterColor, 2f);
+        foreach (var body in _sim.Bodies)
+        {
+            if (_z < body.Z || _z >= body.Z + body.Plan.HeightTiles) continue;
+            var centre = new Vector2((body.X + 0.5f) * TileSize, (body.Y + 0.5f) * TileSize);
+            var color = !body.Alive ? new Color(0.5f, 0.5f, 0.5f) : body.Conscious ? new Color(0.95f, 0.8f, 0.65f) : new Color(0.95f, 0.5f, 0.3f);
+            DrawCircle(centre, TileSize * (_z - body.Z == body.Plan.Parts[body.Plan.HeadPart].Dz ? 0.3f : 0.4f), color);
+            if (body.Id == _bodyId) DrawArc(centre, TileSize * 0.48f, 0f, MathF.Tau, 16, Colors.White, 1.5f);
+        }
         foreach (var bolt in _sim.Projectiles)
             if ((int)Math.Floor(bolt.Z) == _z)
                 DrawCircle(new Vector2((float)bolt.X * TileSize, (float)bolt.Y * TileSize), TileSize * 0.3f, FlameColor);
@@ -205,12 +256,15 @@ public partial class WorldView : Node2D
             $"seed '{_sim.Seed}'   tick {_sim.Tick} ({_sim.ElapsedSeconds:0.0} s)   z {_z}/{grid.Depth - 1}   view {mode}   brush {_materials[_brush].Name}",
             fontSize: 16);
         DrawString(font, new Vector2(4, hudY + 22),
-            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | S stress | M ether | C caster F fireball X freeze V heat G charge B conjure | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
+            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | S stress | M ether | C caster F fireball X freeze V heat G charge B conjure | P student, arrows step, T eat/drink, Z sleep | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
             fontSize: 13, modulate: new Color(0.7f, 0.7f, 0.7f));
         if (_status.Length > 0)
             DrawString(font, new Vector2(4, hudY + 42), _status, fontSize: 13, modulate: new Color(1f, 0.85f, 0.4f));
         if (grid.InBounds(_hoverX, _hoverY, _z))
             DrawString(font, new Vector2(4, hudY + 62), Describe(grid, grid.Index(_hoverX, _hoverY, _z)), fontSize: 13);
+        var shown = BodyAt(_hoverX, _hoverY) ?? Steered();
+        if (shown != null)
+            DrawString(font, new Vector2(4, hudY + 82), DescribeBody(shown), fontSize: 13, modulate: new Color(0.95f, 0.85f, 0.75f));
     }
 
     /// <summary>One line on what a tile holds: its solid or liquid, its gases, temperature and pressure.</summary>
@@ -235,6 +289,30 @@ public partial class WorldView : Node2D
         string stress = load > 0f ? $"  load {load:P0} of strength" : "";
         string ether = $"  ether {grid.EtherPotential(i) / 1e6:0.##} MJ/m³";
         return $"({x},{y},{z})  {held}{gases}  {celsius:0.0} °C{air}  {FluidSystem.PressureAt(grid, i) / 1000:0.###} kPa{burning}{structure}{stress}{ether}";
+    }
+
+    private Body? BodyAt(int x, int y)
+    {
+        foreach (var body in _sim.Bodies)
+            if (body.X == x && body.Y == y && _z >= body.Z && _z < body.Z + body.Plan.HeightTiles) return body;
+        return null;
+    }
+
+    /// <summary>One line on how a body is: its core and skin, what it feels, and the worst of its injuries.</summary>
+    private static string DescribeBody(Body b)
+    {
+        string state = !b.Alive ? $"dead ({b.Cause})" : b.HeartStopped ? "heart stopped" : b.Asleep ? "asleep" : b.Conscious ? "awake" : "unconscious";
+        int worst = 0;
+        double worstHurt = 0.0;
+        for (int p = 0; p < b.Plan.Parts.Length; p++)
+        {
+            double hurt = Math.Max(b.Trauma[p], b.Necrosis(b.Plan.LayerStart[p]));
+            if (hurt > worstHurt) { worstHurt = hurt; worst = p; }
+        }
+        string injury = worstHurt > 0.05 ? $"  worst hurt: {b.Plan.Parts[worst].Name} {Math.Min(worstHurt, 1.0):P0}" : "";
+        return $"Student {b.Id} {state}  core {b.BloodTemperature - 273.15:0.0} °C  skin {b.MeanSkinTemperature - 273.15:0.0} °C  " +
+               $"{b.MetabolicW:0} W  oxygen {b.OxygenFraction:P0}  blood {b.BloodFraction:P0}  hunger {b.Hunger:P0}  thirst {b.Thirst:P0}  fatigue {b.Fatigue:P0}" +
+               $"{(b.ShiverW > 1 ? "  shivering" : "")}{(b.SweatKgPerS > 1e-6 ? "  sweating" : "")}{injury}";
     }
 
     private StructureSystem? Structure()

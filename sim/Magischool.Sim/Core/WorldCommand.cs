@@ -27,6 +27,11 @@ public abstract record WorldCommand
             Magic.CastCharge.TagValue => Magic.CastCharge.ReadFrom(reader),
             Magic.CastFireball.TagValue => Magic.CastFireball.ReadFrom(reader),
             Magic.CastConjure.TagValue => Magic.CastConjure.ReadFrom(reader),
+            Bodies.SpawnBody.TagValue => Bodies.SpawnBody.ReadFrom(reader),
+            Bodies.MoveBody.TagValue => Bodies.MoveBody.ReadFrom(reader),
+            Bodies.EatFood.TagValue => Bodies.EatFood.ReadFrom(reader),
+            Bodies.DrinkWater.TagValue => Bodies.DrinkWater.ReadFrom(reader),
+            Bodies.SetAsleep.TagValue => Bodies.SetAsleep.ReadFrom(reader),
             _ => throw new InvalidDataException($"Unknown command tag {tag}."),
         };
     }

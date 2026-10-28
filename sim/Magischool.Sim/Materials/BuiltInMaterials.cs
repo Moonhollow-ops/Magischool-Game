@@ -25,6 +25,9 @@ public static class BuiltInMaterials
     public const string Crystal = "crystal";
     public const string MoltenCrystal = "molten_crystal";
     public const string Etherium = "etherium";
+    public const string Bread = "bread";
+    public const string Blood = "blood";
+    public const string FrozenBlood = "frozen_blood";
 
     /// <summary>Mass fraction of oxygen in dry air.</summary>
     public const float AirOxygenFraction = 0.2314f;
@@ -101,6 +104,7 @@ public static class BuiltInMaterials
             MeltingPoint = 273.15f, BoilingPoint = 373.15f,
             LatentHeatFusion = 334_000f, LatentHeatVaporization = 2_257_000f,
             FreezesInto = Ice, BoilsInto = Steam,
+            Potable = true,
             EtherPermittivity = 10f, EtherConductivity = 0.5f,
         },
         new()
@@ -193,6 +197,39 @@ public static class BuiltInMaterials
             Density = 3200f, SpecificHeat = 800f, ThermalConductivity = 5f,
             TensileStrength = 30f, CompressiveStrength = 300f, YoungsModulus = 60f,
             EtherPermittivity = 100f, EtherConductivity = 3f, EtherWellPotential = 3e7f,
+        },
+        new()
+        {
+            // Food: 60% starch and 40% water by mass, so it burns as cellulose does, and a body
+            // digests its starch into glycogen (see Bodies.Metabolism). Loose crumbs, no strength.
+            Key = Bread, Name = "Bread", Phase = Phase.Solid, Glyph = 'b', Color = 0xD8A860,
+            Density = 280f, SpecificHeat = 2700f, ThermalConductivity = 0.2f,
+            StrengthLossStartK = 373f, StrengthLossEndK = 573f, IgnitionPoint = 573f,
+            // 0.6 (C6H10O5 + 6 O2 -> 6 CO2 + 5 H2O), the bread's own water leaving as steam.
+            HeatOfCombustion = 8_700_000f, OxygenPerKg = 0.71045f,
+            CombustionProducts = new CombustionProduct[] { new(CarbonDioxide, 0.97712f), new(Steam, 0.73333f) },
+            Edible = true,
+            EtherPermittivity = 5f, EtherConductivity = 0.2f, EtherBreakdown = 2e8f,
+        },
+        new()
+        {
+            // Spilled blood. Thermally it is taken as water, so its energy is counted exactly as
+            // water's and the two can share a puddle; only density and colour differ. It freezes,
+            // but doesn't yet boil (that needs a vapour that condenses back into blood).
+            Key = Blood, Name = "Blood", Phase = Phase.Liquid, Glyph = '~', Color = 0x8A0A0A,
+            Density = 1060f, SpecificHeat = 4186f, ThermalConductivity = 0.5f, Viscosity = 0.004f,
+            MeltingPoint = 273.15f, LatentHeatFusion = 334_000f,
+            FreezesInto = FrozenBlood,
+            EtherPermittivity = 10f, EtherConductivity = 0.5f,
+        },
+        new()
+        {
+            Key = FrozenBlood, Name = "Frozen blood", Phase = Phase.Solid, Glyph = '*', Color = 0x5A0A14,
+            Density = 1000f, SpecificHeat = 2100f, ThermalConductivity = 2.2f,
+            TensileStrength = 1f, CompressiveStrength = 5f, YoungsModulus = 9f,
+            StrengthLossStartK = 253f, StrengthLossEndK = 273.15f, MeltingPoint = 273.15f, LatentHeatFusion = 334_000f,
+            MeltsInto = Blood,
+            EtherPermittivity = 8f, EtherConductivity = 0.4f, EtherBreakdown = 1e8f,
         },
     };
 

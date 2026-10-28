@@ -66,11 +66,16 @@ public static class EnergyAudit
         return total;
     }
 
-    /// <summary>All the energy in the simulation: the world's, and that of spells in flight.</summary>
+    /// <summary>All the energy in the simulation: the world's, that of spells in flight, and that of bodies.</summary>
     public static double TotalJoules(Simulation sim)
     {
         double total = TotalJoules(sim.Grid);
         foreach (var bolt in sim.Projectiles) total += bolt.Joules;
+        if (sim.Bodies.Count > 0)
+        {
+            var w = Bodies.Physiology.For(sim.Materials);
+            foreach (var body in sim.Bodies) total += Bodies.Physiology.Joules(w, body);
+        }
         return total;
     }
 
