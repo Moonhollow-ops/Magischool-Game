@@ -70,6 +70,8 @@ public sealed class ActivitySystem : ISimSystem
         {
             int i = grid.Index(x, y, z);
             if (!rules.IsSettled(grid, i)) return false;
+            // A tile's gas and its solid or liquid must agree too, so comparing one temperature per tile is enough.
+            if (System.Math.Abs(t[i] - grid.GasTemperatureAt(i)) > SleepThresholdK) return false;
             // Each face is checked from its lower side, plus the chunk's lower borders.
             if (x + 1 < grid.Width && System.Math.Abs(t[i] - t[i + 1]) > SleepThresholdK) return false;
             if (y + 1 < grid.Height && System.Math.Abs(t[i] - t[i + grid.Width]) > SleepThresholdK) return false;

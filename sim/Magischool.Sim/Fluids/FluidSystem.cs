@@ -119,6 +119,7 @@ public sealed partial class FluidSystem : ISimSystem
     // Net change per awake tile (pass 1).
     private double[] _dLiquid = Array.Empty<double>();
     private double[] _dEnergy = Array.Empty<double>();
+    private double[] _dGasEnergy = Array.Empty<double>();
     private double[] _dLatent = Array.Empty<double>();
     private double[][] _dGas = Array.Empty<double[]>();
 
@@ -151,6 +152,7 @@ public sealed partial class FluidSystem : ISimSystem
         public double MolPerKg;  // of the mixture; 0 when there is no gas
         public double Pressure;  // Pa
         public double Density;   // kg/m³
+        public double Temperature; // K, of the gas
         public bool Locked => Free < LockVolumeM3;
     }
 
@@ -161,7 +163,7 @@ public sealed partial class FluidSystem : ISimSystem
         double mol = 0.0;
         for (int s = 0; s < table.GasCount; s++)
             mol += grid.GasMass[s][index] / (double)table[table.GasIds[s]].MolarMass;
-        return mol * GasConstant * grid.Temperature[index] / Math.Max(grid.FreeVolume(index), WorldGrid.MinFreeVolumeM3);
+        return mol * GasConstant * grid.GasTemperatureAt(index) / Math.Max(grid.FreeVolume(index), WorldGrid.MinFreeVolumeM3);
     }
 
     /// <summary>Total mass of one material in the world, kg, whichever phase slot holds it.</summary>
@@ -214,7 +216,7 @@ public sealed partial class FluidSystem : ISimSystem
             for (int x = x0; x < x1; x++)
             {
                 int i = grid.Index(x, y, z);
-                double liquid = 0.0, energy = 0.0, latent = 0.0;
+                double liquid = 0.0, energy = 0.0, gasEnergy = 0.0, latent = 0.0;
                 gasNet.Clear();
                 bool moved = false;
                 for (int face = 0; face < 6; face++)
@@ -236,7 +238,7 @@ public sealed partial class FluidSystem : ISimSystem
                     int lo = Math.Min(i, j), hi = Math.Max(i, j);
                     bool loAwake = lo == i || neighbourAwake, hiAwake = hi == i || neighbourAwake;
 
-                    if (!Exchange(grid, lo, hi, axis, loAwake, hiAwake, gasFlux, out double fl, out double fe, out double fs))
+                    if (!Exchange(grid, lo, hi, axis, loAwake, hiAwake, gasFlux, out double fl, out double fe, out double fg, out double fs))
                         continue;
 
                     if (!neighbourAwake)
@@ -249,12 +251,12 @@ public sealed partial class FluidSystem : ISimSystem
                     moved = true;
                     if (i == lo)
                     {
-                        liquid -= fl; energy -= fe; latent -= fs;
+                        liquid -= fl; energy -= fe; gasEnergy -= fg; latent -= fs;
                         for (int s = 0; s < gasCount; s++) gasNet[s] -= gasFlux[s];
                     }
                     else
                     {
-                        liquid += fl; energy += fe; latent += fs;
+                        liquid += fl; energy += fe; gasEnergy += fg; latent += fs;
                         for (int s = 0; s < gasCount; s++) gasNet[s] += gasFlux[s];
                     }
                 }
@@ -266,7 +268,7 @@ public sealed partial class FluidSystem : ISimSystem
                     if (SkyExchange(grid, i, gasFlux, out skyEnergy))
                     {
                         moved = true;
-                        energy -= skyEnergy;
+                        gasEnergy -= skyEnergy;
                         for (int s = 0; s < gasCount; s++) gasNet[s] -= gasFlux[s];
                     }
                     else gasFlux.Clear();
@@ -276,6 +278,7 @@ public sealed partial class FluidSystem : ISimSystem
 
                 _dLiquid[i] = liquid;
                 _dEnergy[i] = energy;
+                _dGasEnergy[i] = gasEnergy;
                 _dLatent[i] = latent;
                 for (int s = 0; s < gasCount; s++) _dGas[s][i] = gasNet[s];
                 if (moved) activity.Stirred[chunk] = true;
@@ -301,10 +304,11 @@ public sealed partial class FluidSystem : ISimSystem
     /// (hi is lo's +x, +y or +z neighbour). Returns false when nothing crosses.
     /// </summary>
     private bool Exchange(WorldGrid grid, int lo, int hi, int axis, bool loAwake, bool hiAwake,
-        Span<double> gasFlux, out double liquid, out double energy, out double latent)
+        Span<double> gasFlux, out double liquid, out double energy, out double gasEnergy, out double latent)
     {
         liquid = 0.0;
         energy = 0.0;
+        gasEnergy = 0.0;
         latent = 0.0;
         gasFlux.Clear();
         bool any = false;
@@ -357,8 +361,8 @@ public sealed partial class FluidSystem : ISimSystem
             if (!gd.Locked && gs.Total > 0.0)
             {
                 double perKg = GasConstant * gs.MolPerKg;
-                double stiffness = perKg * temperature[src] / Math.Max(gs.Free, WorldGrid.MinFreeVolumeM3)
-                                 + perKg * temperature[dst] / Math.Max(gd.Free, WorldGrid.MinFreeVolumeM3);
+                double stiffness = perKg * gs.Temperature / Math.Max(gs.Free, WorldGrid.MinFreeVolumeM3)
+                                 + perKg * gd.Temperature / Math.Max(gd.Free, WorldGrid.MinFreeVolumeM3);
                 double dm = Math.Min(Math.Abs(dP) / stiffness * PressureRelax, gs.Total * PressureCap);
                 if (dm > 0.0)
                 {
@@ -368,7 +372,7 @@ public sealed partial class FluidSystem : ISimSystem
                         double part = dm * (gas[s][src] / gs.Total);
                         if (part == 0.0) continue;
                         gasFlux[s] += sign * part;
-                        energy += sign * part * (_gasSpecificHeat[s] * temperature[src] + _gasOffset[s]);
+                        gasEnergy += sign * part * (_gasSpecificHeat[s] * gs.Temperature + _gasOffset[s]);
                     }
                     any = true;
                 }
@@ -376,7 +380,7 @@ public sealed partial class FluidSystem : ISimSystem
         }
 
         // Carried by the air current through this face.
-        if (loAwake && hiAwake && Advect(grid, lo, hi, axis, gl, gh, gasFlux, ref energy)) any = true;
+        if (loAwake && hiAwake && Advect(grid, lo, hi, axis, gl, gh, gasFlux, ref gasEnergy)) any = true;
 
         // Exchange of equal volumes: gases slowly mixing.
         if (!gl.Locked && !gh.Locked && gl.Total > 0.0 && gh.Total > 0.0)
@@ -399,8 +403,8 @@ public sealed partial class FluidSystem : ISimSystem
                     double down = volume * (gas[s][hi] / gh.Free);
                     if (up == 0.0 && down == 0.0) continue;
                     gasFlux[s] += up - down;
-                    energy += up * (_gasSpecificHeat[s] * temperature[lo] + _gasOffset[s])
-                            - down * (_gasSpecificHeat[s] * temperature[hi] + _gasOffset[s]);
+                    gasEnergy += up * (_gasSpecificHeat[s] * gl.Temperature + _gasOffset[s])
+                               - down * (_gasSpecificHeat[s] * gh.Temperature + _gasOffset[s]);
                 }
                 any = true;
             }
@@ -414,7 +418,7 @@ public sealed partial class FluidSystem : ISimSystem
                 double part = gas[s][lo] * BubbleFraction;
                 if (part == 0.0) continue;
                 gasFlux[s] += part;
-                energy += part * (_gasSpecificHeat[s] * temperature[lo] + _gasOffset[s]);
+                gasEnergy += part * (_gasSpecificHeat[s] * gl.Temperature + _gasOffset[s]);
             }
             any = true;
         }
@@ -432,7 +436,7 @@ public sealed partial class FluidSystem : ISimSystem
         gasFlux.Clear();
         var g = _gas[i];
         if (g.Locked && g.Total <= 0.0) return false;
-        double t = grid.Temperature[i];
+        double t = g.Temperature;
         double[][] gas = grid.GasMass;
         bool any = false;
 
@@ -591,25 +595,28 @@ public sealed partial class FluidSystem : ISimSystem
         }
         double free = grid.FreeVolume(i);
         double volume = Math.Max(free, WorldGrid.MinFreeVolumeM3);
+        double t = grid.GasTemperatureAt(i);
         return new Gas
         {
             Free = free,
             Total = total,
             MolPerKg = total > 0.0 ? mol / total : 0.0,
-            Pressure = mol * GasConstant * grid.Temperature[i] / volume,
+            Pressure = mol * GasConstant * t / volume,
             Density = total / volume,
+            Temperature = t,
         };
     }
 
     private void Apply(WorldGrid grid, int i)
     {
-        double dl = _dLiquid[i], de = _dEnergy[i];
+        double dl = _dLiquid[i], de = _dEnergy[i], dg = _dGasEnergy[i];
         bool gasChanged = false;
         for (int s = 0; s < _dGas.Length; s++)
             if (_dGas[s][i] != 0.0) { gasChanged = true; break; }
-        if (dl == 0.0 && de == 0.0 && !gasChanged) return;
-        // Nothing has touched this tile yet this pass, so this is still its start-of-tick energy.
-        double energy = EnergyAudit.TileJoules(grid, i);
+        if (dl == 0.0 && de == 0.0 && dg == 0.0 && !gasChanged) return;
+        // Nothing has touched this tile yet this pass, so these are still its start-of-tick energies.
+        double condensed = EnergyAudit.CondensedJoules(grid, i) + de;
+        double gasJoules = EnergyAudit.GasJoules(grid, i) + dg;
 
         if (dl != 0.0)
         {
@@ -618,6 +625,9 @@ public sealed partial class FluidSystem : ISimSystem
             if (mass <= EmptyResidueKg)
             {
                 grid.SetCondensed(i, MaterialTable.Empty, 0.0);
+                // The last drops' heat stays in the tile, with its gas.
+                gasJoules += condensed;
+                condensed = 0.0;
             }
             else
             {
@@ -633,13 +643,8 @@ public sealed partial class FluidSystem : ISimSystem
             grid.GasMass[s][i] = g > 0.0 ? g : 0.0;
         }
 
-        // Solve the temperature that makes the tile's energy match what it should now hold.
-        double capacity = grid.HeatCapacity(i);
-        if (capacity <= 0.0) return;
-        double fixedPart = grid.LatentEnergy[i] + grid.Mass[i] * _offset[grid.Material[i]];
-        for (int s = 0; s < _dGas.Length; s++)
-            fixedPart += grid.GasMass[s][i] * _gasOffset[s];
-        grid.Temperature[i] = (energy + de - fixedPart) / capacity;
+        // Solve the temperatures that make the tile's energies match what it should now hold.
+        EnergyAudit.SolveTemperatures(grid, i, condensed, gasJoules);
     }
 
     private void Prepare(WorldGrid grid)
@@ -650,6 +655,7 @@ public sealed partial class FluidSystem : ISimSystem
             _gas = new Gas[grid.Count];
             _dLiquid = new double[grid.Count];
             _dEnergy = new double[grid.Count];
+            _dGasEnergy = new double[grid.Count];
             _dLatent = new double[grid.Count];
             _dGas = new double[grid.Materials.GasCount][];
             for (int s = 0; s < _dGas.Length; s++) _dGas[s] = new double[grid.Count];

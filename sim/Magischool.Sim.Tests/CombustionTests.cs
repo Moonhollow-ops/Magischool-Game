@@ -81,7 +81,7 @@ public class CombustionTests
         double mass0 = TotalMass(grid), energy0 = EnergyAudit.TotalJoules(grid);
 
         int mostBurning = 0;
-        for (int t = 0; t < 120; t++)
+        for (int t = 0; t < 200; t++)
         {
             sim.Step(100);
             mostBurning = Math.Max(mostBurning, BurningTiles(grid));

@@ -55,6 +55,6 @@ becomes heat. A stone cantilever is stressed within 8% of beam theory and
 snaps at the length theory predicts (8 m); posts burning under a stone
 roof give way and the roof comes down; ice frozen with no room to grow
 bursts a thin iron box but not a thick one, and pushes less near 0 °C
-because pressure melts ice. Known gap: a part-full tile shares one
-temperature with the air in it, so thin posts heat faster in hot gas than
-real ones would (see DECISIONS.md).
+because pressure melts ice. Since then a tile holding both a solid or
+liquid and gas keeps a temperature for each, so a thin post in a fire heats
+through its surface the way a real one does (see DECISIONS.md).

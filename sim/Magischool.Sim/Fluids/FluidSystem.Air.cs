@@ -263,7 +263,7 @@ public sealed partial class FluidSystem
     {
         var g = _gas[i];
         if (g.Total <= 0.0) return 1.0;
-        return _referenceDensityFactor / (g.MolPerKg * grid.Temperature[i]);
+        return _referenceDensityFactor / (g.MolPerKg * g.Temperature);
     }
 
     private static double Clamp(double speed) => Math.Clamp(speed, -MaxAirSpeed, MaxAirSpeed);
@@ -286,7 +286,7 @@ public sealed partial class FluidSystem
         if (gs.Total <= 0.0 || gs.Free <= 0.0) return false;
         double volume = Math.Abs(speed) * WorldGrid.TileFaceAreaM2 * Simulation.SecondsPerTick * _airOutScale[src];
         double sign = forward ? 1.0 : -1.0;
-        double t = grid.Temperature[src];
+        double t = gs.Temperature;
         double[][] gas = grid.GasMass;
         for (int s = 0; s < gasFlux.Length; s++)
         {
@@ -309,7 +309,7 @@ public sealed partial class FluidSystem
         {
             if (g.Total <= 0.0 || g.Free <= 0.0) return false;
             volume *= _airOutScale[i];
-            double t = grid.Temperature[i];
+            double t = _gas[i].Temperature;
             for (int s = 0; s < gasFlux.Length; s++)
             {
                 double part = volume * (grid.GasMass[s][i] / g.Free);

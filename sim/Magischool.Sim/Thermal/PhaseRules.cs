@@ -68,10 +68,12 @@ internal sealed class PhaseRules
             if (Freeze[m].Exists && t < Freeze[m].TemperatureK) return false;
             if (Boil[m].Exists && t > Boil[m].TemperatureK) return false;
         }
+        double gasT = grid.GasTemperatureAt(i);
+        if (gasT < 0.0) return false;
         for (int s = 0; s < Condense.Length; s++)
         {
             var c = Condense[s];
-            if (c.Exists && t < c.TemperatureK && grid.GasMass[s][i] > 0.0 && (m == MaterialTable.Empty || m == c.Into))
+            if (c.Exists && gasT < c.TemperatureK && grid.GasMass[s][i] > 0.0 && (m == MaterialTable.Empty || m == c.Into))
                 return false;
         }
         return true;

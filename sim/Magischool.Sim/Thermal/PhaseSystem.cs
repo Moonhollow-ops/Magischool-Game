@@ -70,6 +70,21 @@ public sealed class PhaseSystem : ISimSystem
         // Nothing is colder than absolute zero. Only an outside command can push a tile here;
         // flooring it means that command took out less energy than it asked for.
         if (grid.Temperature[i] < 0.0) grid.Temperature[i] = 0.0;
+        if (grid.GasTemperature[i] < 0.0) grid.GasTemperature[i] = 0.0;
+    }
+
+    /// <summary>Heat capacity of whatever shares the temperature of a tile's solid or liquid, J/K.</summary>
+    private static double CondensedCapacity(WorldGrid grid, int i) =>
+        grid.HasTwoTemperatures(i) ? grid.CondensedHeatCapacity(i) : grid.HeatCapacity(i);
+
+    /// <summary>Heat capacity of whatever shares the temperature of a tile's gas, J/K.</summary>
+    private static double GasCapacity(WorldGrid grid, int i) =>
+        grid.HasTwoTemperatures(i) ? grid.GasHeatCapacity(i) : grid.HeatCapacity(i);
+
+    private static void SetCondensedTemperature(WorldGrid grid, int i, double t)
+    {
+        if (grid.HasTwoTemperatures(i)) grid.Temperature[i] = t;
+        else grid.SetTemperature(i, t);
     }
 
     /// <summary>
@@ -90,7 +105,7 @@ public sealed class PhaseSystem : ISimSystem
         bool cooling = !heating && (s < 0.0 || (s == 0.0 && down.Exists && t < down.TemperatureK));
         if (!heating && !cooling) return false;
 
-        double capacity = grid.HeatCapacity(i);
+        double capacity = CondensedCapacity(grid, i);
         var transition = heating ? up : down;
         double energy = s + (t - transition.TemperatureK) * capacity; // signed: + toward melting, - toward freezing
         double needed = transition.LatentPerKg * grid.Mass[i];
@@ -99,28 +114,31 @@ public sealed class PhaseSystem : ISimSystem
         {
             // Turned back before finishing: return the stored energy as temperature.
             grid.LatentEnergy[i] = 0.0;
-            grid.Temperature[i] = transition.TemperatureK + energy / capacity;
+            SetCondensedTemperature(grid, i, transition.TemperatureK + energy / capacity);
             return false;
         }
 
         if (Math.Abs(energy) < needed)
         {
             grid.LatentEnergy[i] = energy;
-            grid.Temperature[i] = transition.TemperatureK;
+            SetCondensedTemperature(grid, i, transition.TemperatureK);
             return false;
         }
 
         double leftover = heating ? energy - needed : energy + needed;
         grid.Material[i] = transition.Into;
         grid.LatentEnergy[i] = 0.0;
-        grid.Temperature[i] = transition.TemperatureK + leftover / grid.HeatCapacity(i);
+        SetCondensedTemperature(grid, i, transition.TemperatureK + leftover / CondensedCapacity(grid, i));
         return true;
     }
 
+    /// <summary>Liquid left in a boiling tile below this, kg, goes up with the rest.</summary>
+    private const double ResidueKg = 1e-9;
+
     /// <summary>
     /// A liquid above its boiling point turns into its gas, a little at a time: exactly
-    /// as much as the excess heat can pay for, which pins the tile at the boiling point.
-    /// The gas joins the tile's mixture, and the fluids layer carries it away.
+    /// as much as the excess heat can pay for, which pins the liquid at the boiling point.
+    /// The gas joins the tile's mixture at the boiling point, and the fluids layer carries it away.
     /// </summary>
     private static bool Boiling(WorldGrid grid, PhaseRules rules, int i)
     {
@@ -130,16 +148,21 @@ public sealed class PhaseSystem : ISimSystem
         double t = grid.Temperature[i];
         if (!boil.Exists || t <= boil.TemperatureK) return false;
 
-        double energy = (t - boil.TemperatureK) * grid.HeatCapacity(i);
+        double excess = (t - boil.TemperatureK) * CondensedCapacity(grid, i);
         double mass = grid.Mass[i];
-        double dm = Math.Min(mass, energy / boil.LatentPerKg);
+        double dm = Math.Min(mass, excess / boil.LatentPerKg);
         if (dm <= 0.0) return false;
+        // The last film boils off whole, paid for by the gas around it, rather than dwindling forever.
+        if (mass - dm < ResidueKg) dm = mass;
 
+        // Each kilogram leaves as gas at the boiling point, carrying the energy that holds there.
+        double condensed = EnergyAudit.CondensedJoules(grid, i), gas = EnergyAudit.GasJoules(grid, i);
+        double carried = dm * Joules(grid, boil.Into, boil.TemperatureK);
         int species = grid.Materials.GasIndexOf(boil.Into);
         grid.GasMass[species][i] += dm;
         if (dm >= mass) grid.SetCondensed(i, MaterialTable.Empty, 0.0);
         else grid.Mass[i] = mass - dm;
-        grid.Temperature[i] = boil.TemperatureK + (energy - dm * boil.LatentPerKg) / grid.HeatCapacity(i);
+        EnergyAudit.SolveTemperatures(grid, i, condensed - carried, gas + carried);
         return true;
     }
 
@@ -154,22 +177,33 @@ public sealed class PhaseSystem : ISimSystem
         for (int s = 0; s < rules.Condense.Length; s++)
         {
             var c = rules.Condense[s];
-            double gas = grid.GasMass[s][i];
-            double t = grid.Temperature[i];
+            double gasKg = grid.GasMass[s][i];
+            double t = grid.GasTemperatureAt(i);
             ushort m = grid.Material[i];
-            if (!c.Exists || gas <= 0.0 || t >= c.TemperatureK) continue;
+            if (!c.Exists || gasKg <= 0.0 || t >= c.TemperatureK) continue;
             if (m != MaterialTable.Empty && m != c.Into) continue;
 
-            double deficit = (c.TemperatureK - t) * grid.HeatCapacity(i);
-            double dm = Math.Min(gas, deficit / c.LatentPerKg);
+            double deficit = (c.TemperatureK - t) * GasCapacity(grid, i);
+            double dm = Math.Min(gasKg, deficit / c.LatentPerKg);
             if (dm <= 0.0) continue;
 
-            grid.GasMass[s][i] = dm >= gas ? 0.0 : gas - dm;
-            if (m == MaterialTable.Empty) grid.SetCondensed(i, c.Into, dm);
+            // The liquid forms at the condensation point; the latent heat it gives up stays in the gas.
+            double condensed = EnergyAudit.CondensedJoules(grid, i), gas = EnergyAudit.GasJoules(grid, i);
+            double carried = dm * Joules(grid, c.Into, c.TemperatureK);
+            grid.GasMass[s][i] = dm >= gasKg ? 0.0 : gasKg - dm;
+            if (m == MaterialTable.Empty)
+            {
+                grid.SetCondensed(i, c.Into, dm);
+                grid.Temperature[i] = c.TemperatureK;
+            }
             else grid.Mass[i] += dm;
-            grid.Temperature[i] = c.TemperatureK - (deficit - dm * c.LatentPerKg) / grid.HeatCapacity(i);
+            EnergyAudit.SolveTemperatures(grid, i, condensed + carried, gas - carried);
             changed = true;
         }
         return changed;
     }
+
+    /// <summary>Energy, as the audit counts it, of one kg of a material at a temperature.</summary>
+    private static double Joules(WorldGrid grid, ushort material, double temperatureK) =>
+        grid.Materials[material].SpecificHeat * temperatureK + EnergyAudit.OffsetsFor(grid.Materials)[material];
 }

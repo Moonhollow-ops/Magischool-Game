@@ -16,7 +16,7 @@ namespace Magischool.Sim.Persistence;
 public static class Snapshot
 {
     private const uint Magic = 0x5753474D; // "MGSW"
-    public const ushort FormatVersion = 8;
+    public const ushort FormatVersion = 9;
 
     public static void Save(Simulation sim, Stream stream)
     {
@@ -40,6 +40,7 @@ public static class Snapshot
         writer.Write(grid.Depth);
         writer.Write(MemoryMarshal.AsBytes(grid.Material.AsSpan()));
         writer.Write(MemoryMarshal.AsBytes(grid.Temperature.AsSpan()));
+        writer.Write(MemoryMarshal.AsBytes(grid.GasTemperature.AsSpan()));
         writer.Write(MemoryMarshal.AsBytes(grid.Mass.AsSpan()));
         writer.Write(MemoryMarshal.AsBytes(grid.LatentEnergy.AsSpan()));
         // Gas arrays are tagged with their material id, so a table that later gains gases still loads.
@@ -87,6 +88,7 @@ public static class Snapshot
         var grid = new WorldGrid(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(), materials);
         ReadExactly(reader, MemoryMarshal.AsBytes(grid.Material.AsSpan()));
         ReadExactly(reader, MemoryMarshal.AsBytes(grid.Temperature.AsSpan()));
+        ReadExactly(reader, MemoryMarshal.AsBytes(grid.GasTemperature.AsSpan()));
         ReadExactly(reader, MemoryMarshal.AsBytes(grid.Mass.AsSpan()));
         ReadExactly(reader, MemoryMarshal.AsBytes(grid.LatentEnergy.AsSpan()));
         int gasCount = reader.ReadInt32();

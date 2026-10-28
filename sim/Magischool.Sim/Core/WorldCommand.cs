@@ -68,7 +68,7 @@ public sealed record SetTemperature(int X, int Y, int Z, float Kelvin) : WorldCo
     {
         if (!sim.Grid.InBounds(X, Y, Z)) return;
         sim.Activity.WakeAround(X, Y, Z);
-        sim.Grid.Temperature[sim.Grid.Index(X, Y, Z)] = Math.Max(0.0, Kelvin);
+        sim.Grid.SetTemperature(sim.Grid.Index(X, Y, Z), Math.Max(0.0, Kelvin));
     }
 
     internal override void Write(BinaryWriter writer)
@@ -99,7 +99,16 @@ public sealed record AddHeat(int X, int Y, int Z, double Joules) : WorldCommand
         double capacity = sim.Grid.HeatCapacity(i);
         if (capacity <= 0.0) return;
         sim.Activity.WakeAround(X, Y, Z);
-        sim.Grid.Temperature[i] += Joules / capacity;
+        // A source held to a solid or liquid heats that first; the air around it warms from it.
+        var grid = sim.Grid;
+        if (grid.HasTwoTemperatures(i))
+            grid.Temperature[i] += Joules / grid.CondensedHeatCapacity(i);
+        else
+        {
+            double dT = Joules / capacity;
+            grid.Temperature[i] += dT;
+            grid.GasTemperature[i] += dT;
+        }
     }
 
     internal override void Write(BinaryWriter writer)

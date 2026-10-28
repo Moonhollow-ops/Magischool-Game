@@ -190,12 +190,13 @@ public partial class WorldView : Node2D
             if (m > 0) gases.Append($", {_materials[_materials.GasIds[s]].Name} {m * 1000:0.##} g");
         }
         double celsius = grid.Temperature[i] - 273.15;
+        string air = grid.HasTwoTemperatures(i) ? $" (gas {grid.GasTemperature[i] - 273.15:0.0} °C)" : "";
         string burning = grid.Flame[i] != 0 ? "  burning" : "";
         string structure = (grid.Structure[i] & WorldGrid.LooseBit) == 0 || !grid.HasCondensed(i) ? ""
             : grid.FallSpeed[i] > 0.0 ? "  falling" : "  loose";
         float load = Structure()?.UtilisationAt(i) ?? 0f;
         string stress = load > 0f ? $"  load {load:P0} of strength" : "";
-        return $"({x},{y},{z})  {held}{gases}  {celsius:0.0} °C  {FluidSystem.PressureAt(grid, i) / 1000:0.###} kPa{burning}{structure}{stress}";
+        return $"({x},{y},{z})  {held}{gases}  {celsius:0.0} °C{air}  {FluidSystem.PressureAt(grid, i) / 1000:0.###} kPa{burning}{structure}{stress}";
     }
 
     private StructureSystem? Structure()
