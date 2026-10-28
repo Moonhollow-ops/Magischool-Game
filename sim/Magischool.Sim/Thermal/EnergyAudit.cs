@@ -14,6 +14,22 @@ namespace Magischool.Sim.Thermal;
 /// </summary>
 public static class EnergyAudit
 {
+    /// <summary>
+    /// Sets a tile's temperature so that its energy equals <paramref name="joules"/>, given what
+    /// it now contains. Leaves the temperature alone if the tile holds nothing.
+    /// </summary>
+    public static void SolveTemperature(WorldGrid grid, int i, double joules)
+    {
+        double capacity = grid.HeatCapacity(i);
+        if (capacity <= 0.0) return;
+        double[] offsets = OffsetsFor(grid.Materials);
+        var table = grid.Materials;
+        double fixedPart = grid.LatentEnergy[i] + grid.Mass[i] * offsets[grid.Material[i]];
+        for (int s = 0; s < table.GasCount; s++)
+            fixedPart += grid.GasMass[s][i] * offsets[table.GasIds[s]];
+        grid.Temperature[i] = (joules - fixedPart) / capacity;
+    }
+
     public static double TotalJoules(WorldGrid grid)
     {
         double total = 0.0;
@@ -57,6 +73,55 @@ public static class EnergyAudit
         return offsets;
     }
 
+    /// <summary>Reference temperature for heats of combustion, K (25 °C).</summary>
+    public const double CombustionReferenceK = 298.15;
+
+    /// <summary>
+    /// Energy per kg a fuel holds as chemical energy, chosen so that burning it in air at
+    /// 25 °C releases exactly its heat of combustion into the products:
+    /// offset(fuel) = Hc + Σ y·(c·T0 + offset) over products and leftover gas − the same for
+    /// the air used − c(fuel)·T0.
+    /// </summary>
+    private static double ChemicalOffset(MaterialTable table, MaterialDef fuel, int depth)
+    {
+        var air = OxidizerOf(table);
+        const double t0 = CombustionReferenceK;
+        double airUsed = fuel.OxygenPerKg / (double)air.OxygenFraction;
+        var rest = table[table.Id(air.OxygenRemainder!)];
+        double products = 0.0;
+        foreach (var (key, kg) in CombustionYields(fuel))
+        {
+            var p = table[table.Id(key)];
+            products += kg * (p.SpecificHeat * t0 + Offset(table, p, depth + 1));
+        }
+        products += (airUsed - fuel.OxygenPerKg) * (rest.SpecificHeat * t0 + Offset(table, rest, depth + 1));
+        double reactants = airUsed * (air.SpecificHeat * t0 + Offset(table, air, depth + 1)) + fuel.SpecificHeat * t0;
+        return fuel.HeatOfCombustion + products - reactants;
+    }
+
+    /// <summary>The gas fuels take their oxygen from: the first gas that carries oxygen (air).</summary>
+    public static MaterialDef OxidizerOf(MaterialTable table)
+    {
+        foreach (var def in table.All)
+            if (def.OxygenFraction > 0f) return def;
+        throw new InvalidOperationException("Nothing in the table carries oxygen, so nothing can burn.");
+    }
+
+    /// <summary>
+    /// A fuel's products in kg per kg of fuel, scaled so they add up to exactly
+    /// 1 + oxygen per kg (the table stores floats).
+    /// </summary>
+    public static (string Key, double Kg)[] CombustionYields(MaterialDef fuel)
+    {
+        double total = 0.0;
+        foreach (var p in fuel.CombustionProducts) total += p.KgPerKgFuel;
+        double scale = (1.0 + fuel.OxygenPerKg) / total;
+        var yields = new (string, double)[fuel.CombustionProducts.Count];
+        for (int i = 0; i < yields.Length; i++)
+            yields[i] = (fuel.CombustionProducts[i].Key, fuel.CombustionProducts[i].KgPerKgFuel * scale);
+        return yields;
+    }
+
     private static double Offset(MaterialTable table, MaterialDef def, int depth)
     {
         if (depth > table.Count) throw new InvalidOperationException($"Phase links around '{def.Key}' form a loop.");
@@ -67,7 +132,7 @@ public static class EnergyAudit
             Phase.Gas => (def.CondensesInto, def.BoilingPoint, def.LatentHeatVaporization),
             _ => ((string?)null, 0.0, 0.0),
         };
-        if (lowerKey == null) return 0.0;
+        if (lowerKey == null) return def.HeatOfCombustion > 0f ? ChemicalOffset(table, def, depth) : 0.0;
 
         var lower = table[table.Id(lowerKey)];
         return Offset(table, lower, depth + 1) + latent + temperature * (lower.SpecificHeat - def.SpecificHeat);

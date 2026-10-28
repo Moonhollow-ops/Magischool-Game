@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace Magischool.Sim.Materials;
 
 public enum Phase : byte
@@ -53,6 +56,27 @@ public sealed record MaterialDef
     public string? BoilsInto { get; init; }
     public string? CondensesInto { get; init; }
 
+    // Combustion
+    /// <summary>
+    /// J released per kg burned in air, with the water in the products left as vapour
+    /// (the lower heating value). Zero for anything that doesn't burn. Burning needs
+    /// <see cref="IgnitionPoint"/> and oxygen.
+    /// </summary>
+    public float HeatOfCombustion { get; init; }
+    /// <summary>kg of oxygen used per kg burned.</summary>
+    public float OxygenPerKg { get; init; }
+    /// <summary>
+    /// What one kg of this material plus <see cref="OxygenPerKg"/> of oxygen becomes, by key, in
+    /// kg. The masses must add up to 1 + <see cref="OxygenPerKg"/>. Products are gases.
+    /// </summary>
+    public IReadOnlyList<CombustionProduct> CombustionProducts { get; init; } = Array.Empty<CombustionProduct>();
+    /// <summary>
+    /// For a gas that is a fixed mixture containing oxygen (air): the mass fraction that is
+    /// oxygen, and the key of the gas left when that oxygen is used up.
+    /// </summary>
+    public float OxygenFraction { get; init; }
+    public string? OxygenRemainder { get; init; }
+
     // Arcane physics
     /// <summary>Max etheric charge (Ψ) a tile holds before it ruptures.</summary>
     public float EthericCapacity { get; init; }
@@ -67,3 +91,6 @@ public sealed record MaterialDef
     /// <summary>Heat capacity of one full tile, J/K.</summary>
     public double TileHeatCapacity => FullTileMass * SpecificHeat;
 }
+
+/// <summary>One product of burning: a gas, by key, and how many kg of it per kg of fuel.</summary>
+public readonly record struct CombustionProduct(string Key, float KgPerKgFuel);

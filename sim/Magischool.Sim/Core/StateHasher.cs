@@ -28,6 +28,8 @@ internal static class StateHasher
             hash = SeedHash.Hash(MemoryMarshal.AsBytes(gas.AsSpan()), hash);
         foreach (var velocity in grid.AirVelocity)
             hash = SeedHash.Hash(MemoryMarshal.AsBytes(velocity.AsSpan()), hash);
+        hash = SeedHash.Hash(grid.Flame, hash);
+        hash = SeedHash.Hash(MemoryMarshal.AsBytes(grid.Skin.AsSpan()), hash);
         hash = SeedHash.Hash(MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()), hash);
         return hash;
     }

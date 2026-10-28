@@ -1,3 +1,4 @@
+using Magischool.Sim.Combustion;
 using Magischool.Sim.Fluids;
 using Magischool.Sim.Thermal;
 
@@ -14,6 +15,7 @@ public static class StandardSystems
     {
         new ThermalSystem(),
         new PhaseSystem(),
+        new CombustionSystem(),
         new FluidSystem(openSky), // after phase changes, so fresh steam moves the same tick
         new ActivitySystem(), // always last: decides what sleeps next tick
     };

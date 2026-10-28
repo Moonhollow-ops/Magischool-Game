@@ -61,6 +61,8 @@ public sealed class MaterialTable
         }
         _gasIds = gasIds.ToArray();
 
+        foreach (var def in _defs) CheckCombustion(def);
+
         foreach (var def in _defs)
         {
             if (def.MeltsInto != null) CheckPair(def, this[Id(def.MeltsInto)], fusion: true);
@@ -110,6 +112,30 @@ public sealed class MaterialTable
         if (!linked) throw new ArgumentException($"Phase link {name} must point both ways.");
         if (!phases) throw new ArgumentException($"Phase link {name} joins the wrong phases.");
         if (!matches) throw new ArgumentException($"Phase link {name} disagrees on transition temperature or latent heat.");
+    }
+
+    /// <summary>Burning must neither make nor destroy mass, and must turn into gases the table knows.</summary>
+    private void CheckCombustion(MaterialDef def)
+    {
+        if (def.OxygenFraction > 0f)
+        {
+            if (def.Phase != Phase.Gas || def.OxygenFraction >= 1f)
+                throw new ArgumentException($"'{def.Key}' can only hold oxygen as a gas, with a fraction below 1.");
+            if (def.OxygenRemainder == null || !TryGetId(def.OxygenRemainder, out var rest) || this[rest].Phase != Phase.Gas)
+                throw new ArgumentException($"'{def.Key}' needs a gas to leave behind when its oxygen is used.");
+        }
+        if (def.HeatOfCombustion <= 0f) return;
+        if (def.Phase == Phase.Gas || float.IsPositiveInfinity(def.IgnitionPoint) || def.OxygenPerKg <= 0f)
+            throw new ArgumentException($"Fuel '{def.Key}' must be a solid or liquid with an ignition point and an oxygen need.");
+        double total = 0.0;
+        foreach (var product in def.CombustionProducts)
+        {
+            if (!TryGetId(product.Key, out var id) || this[id].Phase != Phase.Gas)
+                throw new ArgumentException($"Fuel '{def.Key}' burns into '{product.Key}', which is not a known gas.");
+            total += product.KgPerKgFuel;
+        }
+        if (Math.Abs(total - (1.0 + def.OxygenPerKg)) > 1e-4)
+            throw new ArgumentException($"Fuel '{def.Key}' products weigh {total} kg per kg but fuel plus oxygen is {1.0 + def.OxygenPerKg}.");
     }
 
     private void CheckLink(MaterialDef def, string? target)

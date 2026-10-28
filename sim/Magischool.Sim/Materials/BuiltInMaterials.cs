@@ -19,6 +19,12 @@ public static class BuiltInMaterials
     public const string MoltenLead = "molten_lead";
     public const string MoltenIron = "molten_iron";
     public const string Magma = "magma";
+    public const string Nitrogen = "nitrogen";
+    public const string CarbonDioxide = "carbon_dioxide";
+    public const string Smoke = "smoke";
+
+    /// <summary>Mass fraction of oxygen in dry air.</summary>
+    public const float AirOxygenFraction = 0.2314f;
 
     /// <summary>20 °C.</summary>
     public const float RoomTemperatureK = 293.15f;
@@ -29,7 +35,10 @@ public static class BuiltInMaterials
         new()
         {
             Key = Air, Name = "Air", Phase = Phase.Gas, Glyph = ' ', Color = 0x101018,
+            // Air is one gas of fixed makeup: 23.14% oxygen by mass, the rest nitrogen and argon.
+            // Burning takes its oxygen and leaves the rest behind as nitrogen.
             Density = 1.2f, SpecificHeat = 1005f, ThermalConductivity = 0.026f, MolarMass = 0.028965f,
+            OxygenFraction = AirOxygenFraction, OxygenRemainder = Nitrogen,
             EthericCapacity = 1f, ArcaneConductivity = 0.1f,
         },
         new()
@@ -52,6 +61,12 @@ public static class BuiltInMaterials
             Key = Wood, Name = "Oak", Phase = Phase.Solid, Glyph = '=', Color = 0x8B5A2B,
             Density = 750f, SpecificHeat = 2000f, ThermalConductivity = 0.17f,
             TensileStrength = 40f, IgnitionPoint = 573f,
+            // Burns as cellulose: C6H10O5 + 6 O2 -> 6 CO2 + 5 H2O, with 1.5% leaving as soot and ash.
+            HeatOfCombustion = 15_000_000f, OxygenPerKg = 1.1672f,
+            CombustionProducts = new CombustionProduct[]
+            {
+                new(CarbonDioxide, 1.6056f), new(Steam, 0.5466f), new(Smoke, 0.015f),
+            },
             EthericCapacity = 30f, ArcaneConductivity = 0.5f,
         },
         new()
@@ -121,6 +136,27 @@ public static class BuiltInMaterials
             MeltingPoint = 1500f, LatentHeatFusion = 400_000f,
             FreezesInto = Stone,
             EthericCapacity = 60f, ArcaneConductivity = 0.4f,
+        },
+        new()
+        {
+            // What air leaves behind when its oxygen burns away (with the argon).
+            Key = Nitrogen, Name = "Nitrogen", Phase = Phase.Gas, Glyph = ' ', Color = 0x101820,
+            Density = 1.165f, SpecificHeat = 1040f, ThermalConductivity = 0.026f, MolarMass = 0.02816f,
+            EthericCapacity = 1f, ArcaneConductivity = 0.1f,
+        },
+        new()
+        {
+            Key = CarbonDioxide, Name = "Carbon dioxide", Phase = Phase.Gas, Glyph = ' ', Color = 0x181010,
+            Density = 1.84f, SpecificHeat = 844f, ThermalConductivity = 0.0166f, MolarMass = 0.04401f,
+            EthericCapacity = 1f, ArcaneConductivity = 0.1f,
+        },
+        new()
+        {
+            // Soot and fly ash carried in the air. The particles are so heavy per "molecule" that
+            // they add almost nothing to pressure (a huge molar mass), but they do weigh the air down.
+            Key = Smoke, Name = "Smoke", Phase = Phase.Gas, Glyph = '.', Color = 0x3C3C3C,
+            Density = 1.2f, SpecificHeat = 700f, ThermalConductivity = 0.026f, MolarMass = 1.0f,
+            EthericCapacity = 1f, ArcaneConductivity = 0.1f,
         },
     };
 
