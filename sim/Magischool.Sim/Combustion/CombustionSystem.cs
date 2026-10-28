@@ -252,7 +252,7 @@ public sealed class CombustionSystem : ISimSystem
         double surface = f == g ? grid.Temperature[f] : SkinOf(grid, f, SiteBit(grid, f, g) - 1);
         if (surface < _ignition[fuel]) return 0.0;
 
-        double kg = BurnRateKgPerM2S * WorldGrid.TileFaceAreaM2 * Simulation.SecondsPerTick * strength;
+        double kg = BurnRateKgPerM2S * WorldGrid.TileFaceAreaM2 * Exposed(grid, f) * Simulation.SecondsPerTick * strength;
         kg = Math.Min(kg, FuelCapPerSite * fuelMass);
         kg = Math.Min(kg, OxygenCapPerFuel * grid.GasMass[_air][g] * _oxygenFraction / _oxygenPerKg[fuel]);
         return kg;
@@ -293,7 +293,7 @@ public sealed class CombustionSystem : ISimSystem
         skinAfter = stored;
         if (grid.FreeVolume(g) < FluidSystem.GasLockFraction * WorldGrid.TileVolumeM3) return 0.0;
 
-        double inside = grid.Temperature[f];
+        double inside = CoreTemperature(grid, f);
         double skin = stored > 0.0 ? stored : inside;
         double gas = grid.Temperature[g];
         bool flame = FlameIn(grid, g);
@@ -304,7 +304,8 @@ public sealed class CombustionSystem : ISimSystem
             return 0.0;
         }
 
-        const double area = WorldGrid.TileFaceAreaM2, dt = Simulation.SecondsPerTick;
+        const double dt = Simulation.SecondsPerTick;
+        double area = WorldGrid.TileFaceAreaM2 * Exposed(grid, f);
         double capacity = grid.HeatCapacity(g);
         double skinCapacity = _skinCapacity[fuel];
         double s2 = skin * skin, g2 = gas * gas;
@@ -325,6 +326,42 @@ public sealed class CombustionSystem : ISimSystem
         skinAfter = quiet && Math.Abs(after - inside) < QuietK ? 0.0 : after;
         return exchange + flameJoules;
     }
+
+    /// <summary>
+    /// Temperature of a tile beneath the surface layers of its faces, K. The layers' heat is part of
+    /// the tile's, so the core holds what is left: a beam scorched on the outside can still be
+    /// cool and strong inside. Faces with no layer of their own count as core.
+    /// </summary>
+    public static double CoreTemperature(WorldGrid grid, int i)
+    {
+        double total = grid.HeatCapacity(i);
+        if (total <= 0.0 || !grid.HasCondensed(i)) return grid.Temperature[i];
+        var def = grid.Materials[grid.Material[i]];
+        double layer = def.Density * def.SpecificHeat * SkinDepthM * WorldGrid.TileFaceAreaM2 * Exposed(grid, i);
+        double skinCapacity = 0.0, skinHeat = 0.0;
+        for (int face = 0; face < 6; face++)
+        {
+            double skin = grid.Skin[i * 6 + face];
+            if (skin <= 0.0) continue;
+            skinCapacity += layer;
+            skinHeat += layer * skin;
+        }
+        if (skinCapacity == 0.0) return grid.Temperature[i];
+        // A tile so thin it is nearly all surface has no core to speak of.
+        if (skinCapacity > 0.9 * total)
+        {
+            double scale = 0.9 * total / skinCapacity;
+            skinCapacity *= scale;
+            skinHeat *= scale;
+        }
+        return Math.Max(0.0, (total * grid.Temperature[i] - skinHeat) / (total - skinCapacity));
+    }
+
+    /// <summary>
+    /// Share of a face's area that a part-full fuel tile (a post, a plank) actually presents: as
+    /// if its fuel were a cube, the area goes as the fill to the power 2/3.
+    /// </summary>
+    private static double Exposed(WorldGrid grid, int f) => Math.Pow(Math.Min(1.0, grid.FillFraction(f)), 2.0 / 3.0);
 
     /// <summary>Whether any fuel face around gas tile g, or gas inside g's own fuel, is alight.</summary>
     private static bool FlameIn(WorldGrid grid, int g)

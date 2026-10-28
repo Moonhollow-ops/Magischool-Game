@@ -45,7 +45,8 @@ public static class BuiltInMaterials
         {
             Key = Stone, Name = "Granite", Phase = Phase.Solid, Glyph = '#', Color = 0x6E6A66,
             Density = 2700f, SpecificHeat = 790f, ThermalConductivity = 2.8f,
-            TensileStrength = 10f, MeltingPoint = 1500f, LatentHeatFusion = 400_000f,
+            TensileStrength = 10f, CompressiveStrength = 130f, YoungsModulus = 50f,
+            StrengthLossStartK = 873f, StrengthLossEndK = 1473f, MeltingPoint = 1500f, LatentHeatFusion = 400_000f,
             MeltsInto = Magma,
             EthericCapacity = 50f, ArcaneConductivity = 0.3f,
         },
@@ -53,14 +54,16 @@ public static class BuiltInMaterials
         {
             Key = Soil, Name = "Soil", Phase = Phase.Solid, Glyph = ',', Color = 0x5A4128,
             Density = 1500f, SpecificHeat = 800f, ThermalConductivity = 0.5f,
-            TensileStrength = 0.01f,
+            TensileStrength = 0.01f, CompressiveStrength = 0.1f, YoungsModulus = 0.05f,
             EthericCapacity = 40f, ArcaneConductivity = 0.4f,
         },
         new()
         {
             Key = Wood, Name = "Oak", Phase = Phase.Solid, Glyph = '=', Color = 0x8B5A2B,
             Density = 750f, SpecificHeat = 2000f, ThermalConductivity = 0.17f,
-            TensileStrength = 40f, IgnitionPoint = 573f,
+            TensileStrength = 40f, CompressiveStrength = 40f, YoungsModulus = 11f,
+            // Loses strength as it dries and pyrolyses; by its ignition point it is char.
+            StrengthLossStartK = 373f, StrengthLossEndK = 573f, IgnitionPoint = 573f,
             // Burns as cellulose: C6H10O5 + 6 O2 -> 6 CO2 + 5 H2O, with 1.5% leaving as soot and ash.
             HeatOfCombustion = 15_000_000f, OxygenPerKg = 1.1672f,
             CombustionProducts = new CombustionProduct[]
@@ -74,7 +77,8 @@ public static class BuiltInMaterials
             // Cold iron disrupts magic: low capacity, poor conduction, some insulation.
             Key = Iron, Name = "Iron", Phase = Phase.Solid, Glyph = 'I', Color = 0x8C96A0,
             Density = 7870f, SpecificHeat = 450f, ThermalConductivity = 80f,
-            TensileStrength = 350f, MeltingPoint = 1811f, LatentHeatFusion = 247_000f,
+            TensileStrength = 350f, CompressiveStrength = 350f, YoungsModulus = 200f,
+            StrengthLossStartK = 673f, StrengthLossEndK = 1473f, MeltingPoint = 1811f, LatentHeatFusion = 247_000f,
             MeltsInto = MoltenIron,
             EthericCapacity = 10f, ArcaneConductivity = 0.05f, AntiMagicInsulation = 0.3f,
         },
@@ -83,7 +87,8 @@ public static class BuiltInMaterials
             // Lead is the classic shield: almost blocks charge entirely.
             Key = Lead, Name = "Lead", Phase = Phase.Solid, Glyph = 'L', Color = 0x50566B,
             Density = 11_340f, SpecificHeat = 129f, ThermalConductivity = 35f,
-            TensileStrength = 18f, MeltingPoint = 600.6f, LatentHeatFusion = 23_000f,
+            TensileStrength = 18f, CompressiveStrength = 18f, YoungsModulus = 16f,
+            StrengthLossStartK = 373f, StrengthLossEndK = 600.6f, MeltingPoint = 600.6f, LatentHeatFusion = 23_000f,
             MeltsInto = MoltenLead,
             EthericCapacity = 5f, ArcaneConductivity = 0.02f, AntiMagicInsulation = 0.9f,
         },
@@ -100,7 +105,8 @@ public static class BuiltInMaterials
         {
             Key = Ice, Name = "Ice", Phase = Phase.Solid, Glyph = '*', Color = 0xB4DCF0,
             Density = 917f, SpecificHeat = 2100f, ThermalConductivity = 2.2f,
-            TensileStrength = 1f, MeltingPoint = 273.15f, LatentHeatFusion = 334_000f,
+            TensileStrength = 1f, CompressiveStrength = 5f, YoungsModulus = 9f,
+            StrengthLossStartK = 253f, StrengthLossEndK = 273.15f, MeltingPoint = 273.15f, LatentHeatFusion = 334_000f,
             MeltsInto = Water,
             EthericCapacity = 25f, ArcaneConductivity = 0.6f,
         },

@@ -36,12 +36,13 @@ Viewer: open `game/project.godot` in Godot 4.7 .NET and press Play.
 | Q / E | Down / up one z-level |
 | Tab | Toggle the heat overlay |
 | A | Toggle air currents (lines: sideways flow, dots: rising orange, sinking blue) |
+| S | Toggle stress: solids from green (unloaded) through yellow to red (breaking); rubble grey |
 | 1 to 9 | Pick a material brush |
 | Left click | Place the brush material (costs 1 tick) |
 | Right click | Set a tile to 1000 K (Shift: 100 K). Debug only: ignores energy conservation |
 | F5 / F9 | Save / load |
 | R | New random seed |
-| Hover | Read a tile: its solid or liquid, gases, temperature, pressure and whether it is burning |
+| Hover | Read a tile: its solid or liquid, gases, temperature, pressure, whether it is burning, loose or falling, and its load |
 
 Smoke darkens the tiles it is in, and an orange dot marks wood that is burning.
 
