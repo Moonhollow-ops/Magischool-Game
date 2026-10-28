@@ -1,4 +1,5 @@
 using Magischool.Sim.Combustion;
+using Magischool.Sim.Ether;
 using Magischool.Sim.Fluids;
 using Magischool.Sim.Structure;
 using Magischool.Sim.Thermal;
@@ -14,6 +15,7 @@ public static class StandardSystems
     /// <param name="openSky">False seals the top of the world too, for lab tests that count every joule.</param>
     public static ISimSystem[] Create(bool openSky = true) => new ISimSystem[]
     {
+        new EtherSystem(), // first, so a rupture's heat spreads the same tick
         new ThermalSystem(),
         new PhaseSystem(),
         new CombustionSystem(),

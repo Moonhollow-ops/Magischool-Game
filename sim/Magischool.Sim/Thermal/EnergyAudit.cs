@@ -40,15 +40,29 @@ public static class EnergyAudit
         grid.SetTemperature(i, (condensedJoules + gasJoules - condensedFixed - gasFixed) / capacity);
     }
 
+    /// <summary>Brings a tile's solid or liquid and its gas to one temperature, keeping their total energy.</summary>
+    public static void Equalize(WorldGrid grid, int i)
+    {
+        double total = TileJoules(grid, i);
+        double[] offsets = OffsetsFor(grid.Materials);
+        var table = grid.Materials;
+        double fixedJoules = grid.LatentEnergy[i] + grid.Mass[i] * offsets[grid.Material[i]];
+        for (int s = 0; s < table.GasCount; s++)
+            fixedJoules += grid.GasMass[s][i] * offsets[table.GasIds[s]];
+        double capacity = grid.HeatCapacity(i);
+        if (capacity > 0.0) grid.SetTemperature(i, (total - fixedJoules) / capacity);
+    }
+
     /// <summary>Adds energy to a tile's solid or liquid and to its gas, J.</summary>
     public static void AddJoules(WorldGrid grid, int i, double condensedJoules, double gasJoules) =>
         SolveTemperatures(grid, i, CondensedJoules(grid, i) + condensedJoules, GasJoules(grid, i) + gasJoules);
 
+    /// <summary>All the energy in the world: every tile's heat, chemical and latent energy, and its ether.</summary>
     public static double TotalJoules(WorldGrid grid)
     {
         double total = 0.0;
         for (int i = 0; i < grid.Count; i++)
-            total += TileJoules(grid, i);
+            total += TileJoules(grid, i) + grid.Ether[i];
         return total;
     }
 

@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Magischool.Sim.Core;
+using Magischool.Sim.Structure;
+using Magischool.Sim.Ether;
+using System.Linq;
 using Magischool.Sim.Materials;
 using Magischool.Sim.Thermal;
 using Magischool.Sim.WorldGen;
@@ -161,7 +164,10 @@ public class PhaseTests
     [Fact]
     public void TestRoomConservesEnergyWithPhaseChanges()
     {
-        var sim = TestRoomGenerator.Create("phase-room", Table, systems: StandardSystems.Create(openSky: false));
+        var systems = StandardSystems.Create(openSky: false);
+        var sim = TestRoomGenerator.Create("phase-room", Table, systems: systems);
+        // The room's ley node draws on the reservoir under the world, and its crystal may shatter and fall.
+        double Outside() => systems.OfType<EtherSystem>().Single().ReservoirInJ + systems.OfType<StructureSystem>().Single().ReleasedPotentialJ;
         var grid = sim.Grid;
         // Melting a full cubic metre of ice in a warm room takes hours, so start the ice
         // 99.9% of the way through melting and the floor air hot, and watch it finish.
@@ -181,7 +187,7 @@ public class PhaseTests
         sim.Step(20_000);
 
         Assert.True(Count(grid, Ice) < iceBefore, "no ice melted");
-        Assert.InRange(Math.Abs(EnergyAudit.TotalJoules(grid) - before) / before, 0.0, 1e-12);
+        Assert.InRange(Math.Abs(EnergyAudit.TotalJoules(grid) - Outside() - before) / before, 0.0, 1e-12);
     }
 
     [Fact]

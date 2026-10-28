@@ -9,7 +9,7 @@ namespace Magischool.Sim.Core;
 /// <see cref="TileSizeM"/> on each side (half a metre). z = 0 is the lowest layer.
 ///
 /// <para>
-/// A tile has two kinds of contents sharing one temperature:
+/// A tile has two kinds of contents, each with its own temperature when both are present:
 /// a <b>condensed slot</b> holding at most one solid or liquid with an exact
 /// mass (<see cref="Material"/>, <see cref="Mass"/>; <see cref="MaterialTable.Empty"/>
 /// when there is none), and a <b>gas mixture</b> filling whatever volume the
@@ -112,6 +112,32 @@ public sealed class WorldGrid
     public readonly double[] FallSpeed;
     public readonly double[] FallTravel;
 
+    /// <summary>
+    /// Ether held in each tile, J: energy a caster can draw on and turn into heat, force or
+    /// matter. The ether lives in space, not in the matter there, so it stays put when the
+    /// matter moves; the matter only sets how much the tile holds at a given potential
+    /// (see <see cref="EtherCapacity"/>).
+    /// </summary>
+    public readonly double[] Ether;
+
+    /// <summary>
+    /// The ether potential each place settles to, J/m³: set by its surroundings (rock, water,
+    /// ley lines), so some places are rich in magic and others poor. The deep reservoir under
+    /// the world refills or drains each tile toward it.
+    /// </summary>
+    public readonly double[] EtherAmbient;
+
+    /// <summary>
+    /// How fast the deep reservoir pulls each tile toward its ambient potential, per second:
+    /// the inverse of the time it takes to close most of the gap. Ordinary ground refills over
+    /// minutes (<see cref="DefaultEtherRefillPerSecond"/>); at a ley node the ether wells up
+    /// within seconds.
+    /// </summary>
+    public readonly double[] EtherRefillRate;
+
+    /// <summary>Ten minutes to close most of the gap: a drained place is mostly back within half an hour.</summary>
+    public const double DefaultEtherRefillPerSecond = 1.0 / 600.0;
+
     public WorldGrid(int width, int height, int depth, MaterialTable materials)
     {
         if (width <= 0 || height <= 0 || depth <= 0)
@@ -139,6 +165,10 @@ public sealed class WorldGrid
         Structure = new byte[Count];
         FallSpeed = new double[Count];
         FallTravel = new double[Count];
+        Ether = new double[Count];
+        EtherAmbient = new double[Count];
+        EtherRefillRate = new double[Count];
+        Array.Fill(EtherRefillRate, DefaultEtherRefillPerSecond);
     }
 
     public int Index(int x, int y, int z) => (z * Height + y) * Width + x;
@@ -257,6 +287,30 @@ public sealed class WorldGrid
         HasCondensed(index) ? Mass[index] / Materials[Material[index]].FullTileMass : 0.0;
 
     /// <summary>
+    /// How much ether a tile holds per unit of potential, m³: its open space counts as itself,
+    /// its solid or liquid as its volume times the material's permittivity.
+    /// </summary>
+    public double EtherCapacity(int index)
+    {
+        double condensed = Math.Min(CondensedVolume(index), TileVolumeM3);
+        double permittivity = HasCondensed(index) ? Materials[Material[index]].EtherPermittivity : 0.0;
+        return condensed * permittivity + (TileVolumeM3 - condensed);
+    }
+
+    /// <summary>Ether potential of a tile, J/m³: its charge over its capacity.</summary>
+    public double EtherPotential(int index) => Ether[index] / EtherCapacity(index);
+
+    /// <summary>Breaks every bond a tile has to its neighbours, so it holds to nothing.</summary>
+    public void BreakBonds(int index)
+    {
+        Structure[index] |= 7;
+        int plane = Width * Height;
+        if (index % Width > 0) Structure[index - 1] |= 1;
+        if (index / Width % Height > 0) Structure[index - Width] |= 2;
+        if (index >= plane) Structure[index - plane] |= 4;
+    }
+
+    /// <summary>
     /// The material a viewer should draw: the condensed material if it fills at
     /// least <paramref name="minFill"/> of the tile, otherwise the most massive gas.
     /// </summary>
@@ -286,6 +340,9 @@ public sealed class WorldGrid
         Array.Copy(Structure, copy.Structure, Count);
         Array.Copy(FallSpeed, copy.FallSpeed, Count);
         Array.Copy(FallTravel, copy.FallTravel, Count);
+        Array.Copy(Ether, copy.Ether, Count);
+        Array.Copy(EtherAmbient, copy.EtherAmbient, Count);
+        Array.Copy(EtherRefillRate, copy.EtherRefillRate, Count);
         return copy;
     }
 }
