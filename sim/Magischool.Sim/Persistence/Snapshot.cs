@@ -16,7 +16,7 @@ namespace Magischool.Sim.Persistence;
 public static class Snapshot
 {
     private const uint Magic = 0x5753474D; // "MGSW"
-    public const ushort FormatVersion = 11;
+    public const ushort FormatVersion = 12;
 
     public static void Save(Simulation sim, Stream stream)
     {
@@ -68,6 +68,9 @@ public static class Snapshot
             writer.Write(bolt.VX); writer.Write(bolt.VY); writer.Write(bolt.VZ);
             writer.Write(bolt.Joules); writer.Write(bolt.Age);
         }
+        writer.Write(sim.NextBodyId);
+        writer.Write(sim.Bodies.Count);
+        foreach (var body in sim.Bodies) body.Write(writer);
     }
 
     public static Simulation Load(Stream stream, MaterialTable materials, IEnumerable<ISimSystem>? systems = null)
@@ -133,6 +136,9 @@ public static class Snapshot
                 Joules = reader.ReadDouble(), Age = reader.ReadDouble(),
             });
         }
+        sim.NextBodyId = reader.ReadInt32();
+        int bodies = reader.ReadInt32();
+        for (int b = 0; b < bodies; b++) sim.Bodies.Add(Bodies.Body.Read(reader));
         sim.Rng.State = rngState;
         sim.Rng.Increment = rngIncrement;
         return sim;

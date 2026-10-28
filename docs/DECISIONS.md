@@ -4,6 +4,49 @@ The running record of what has been decided, newest first. Anything here is
 settled until the owner says otherwise; open questions live in
 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
 
+## 2026-10-28: Bodies are living tissue
+
+The owner chose the most detailed of three options for layer 9: bodies are
+built of real tissue with its real physical properties, and food powers a
+metabolism. Injuries come from a tissue failing under heat, cold or force,
+never from a damage number. The owner defers the physics to Claude, because
+the deep simulated world matters most.
+
+- A body is concentric layers of skin, fat, muscle, bone and organs in each
+  part (head, torso, arms, thighs, legs), with the tissue constants of the
+  Fiala and Gagge thermal-physiology models. Heat conducts between layers,
+  and blood carries it between every layer and the core (Pennes).
+- Regulation follows Gagge's 1971 model. Skin blood flow opens when the body
+  is warm and closes when the skin is cold. Shivering answers a cold core
+  and cold skin together, up to 350 W. Sweat answers the mean body
+  temperature, and evaporates only as fast as the vapour-pressure drop to the
+  air allows (Lewis relation; clothing passes vapour a third as well as
+  heat).
+- Metabolism burns glycogen and fat with their real chemistry, using the
+  oxygen the blood holds. Breathing takes the tile's gas as it is. The blood
+  binds oxygen by the haemoglobin curve at the alveolar pressure, and in air
+  poorer than the blood gives it back within seconds. Exhaled breath is warm,
+  saturated and carries the carbon dioxide. Bread is 60% starch and 40% water
+  and digests into glycogen; whatever the glycogen can't hold becomes fat.
+- Burns use the Henriques damage integral, freezing uses latent heat
+  (frostbite is the ice that formed), and tissue over 100 °C boils dry. Falls
+  and falling rubble put their kinetic energy into the parts they hit. Past
+  250 J/kg a part is broken, and broken parts bleed until they clot.
+- The heart stops when the core is below 24 °C or above 44 °C, when half the
+  blood is gone, when oxygen runs out, when the chest is crushed or the
+  organs cooked, or when there is no fuel or water. The body dies when its
+  brain does: five minutes without oxygen, or the brain itself destroyed.
+- Everything is counted. A body's energy is m·(c·T + o) per layer, with o set
+  so tissue at 37 °C holds what water there does, plus lumps for its stores.
+  The world plus every body conserves energy and mass exactly, apart from
+  what falls and climbs trade with gravity.
+- Spilled blood is thermally water and freezes into frozen blood. It doesn't
+  boil yet, because a vapour that condenses back into blood is needed first.
+- Not yet: bodies don't take up volume in their tiles, hold no ether, and
+  can't cast. A flash heats a part's whole skin layer rather than the face it
+  struck. Clothing doesn't burn. Smoke doesn't harm the lungs. Carbon dioxide
+  in the air doesn't change breathing.
+
 ## 2026-10-28: Conjured matter and etherium
 
 From the owner: all magic is built from the energy of the etheric plane.
@@ -271,6 +314,13 @@ holding.
   matter in the target's condensed slot (only if empty or the same
   material, never past full) or its gas. Not yet: force, rituals reaching
   further.
+- **Bodies (layer 9):** `Simulation.Bodies` holds each body's full state,
+  which is saved and hashed. `BodySystem` runs after spells and before heat,
+  one body at a time. A body stands in a column of tiles (a human is four)
+  and wakes the chunks around it each tick. Commands spawn a body, step it
+  (up a one-tile step if needed), eat, drink and sleep. A body falls when
+  nothing solid is under it and floats once its thighs are under water.
+  Urine and blood are poured into the tile at its feet.
 - **Below absolute zero:** a bead of liquid too small to hold its temperature
   through a tick can be cooled past freezing by the gas around it by more
   than it holds above 0 K as a solid. Rather than flooring it (which made

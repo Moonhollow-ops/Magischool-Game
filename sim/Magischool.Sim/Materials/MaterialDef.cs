@@ -90,6 +90,15 @@ public sealed record MaterialDef
     public float OxygenFraction { get; init; }
     public string? OxygenRemainder { get; init; }
 
+    // Bodies (layer 9)
+    /// <summary>
+    /// A solid a body can eat: its burning must be that of starch and water (it gives only carbon
+    /// dioxide and steam, and takes the oxygen starch needs), which is what a body digests.
+    /// </summary>
+    public bool Edible { get; init; }
+    /// <summary>A liquid a body can drink as water.</summary>
+    public bool Potable { get; init; }
+
     // Arcane physics (layer 7). The ether is a field of energy that pervades space; matter only
     // changes how much of it a place holds and how freely it moves.
     /// <summary>

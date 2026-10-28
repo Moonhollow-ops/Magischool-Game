@@ -32,10 +32,8 @@ owner answers; answered questions move to [DECISIONS.md](DECISIONS.md).
 
 ## Needed for bodies and combat (layer 9)
 
-9. **How detailed are bodies?** Default: Dwarf Fortress style. Body parts with
-   tissue layers (skin, fat, muscle, bone), each with its own material, so
-   burns, frostbite and fractures come out of the same physics as everything
-   else.
+9. ~~How detailed are bodies?~~ Decided: living tissue physiology (see
+   DECISIONS.md, 2026-10-28).
 
 ## Needed for the city
 

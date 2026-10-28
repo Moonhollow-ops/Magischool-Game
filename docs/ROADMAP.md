@@ -15,8 +15,8 @@ cover it, including a determinism check.
 | 6 | Structure and load | A burning support beam fails and the ceiling collapses | Done |
 | 7 | Ether field | Arcane charge flows through stone and ruptures an overloaded crystal | Done |
 | 8 | Spells as field inputs | Spells only add heat, force, charge or matter; the frozen pipe bursts with no special code | Done (heat, charge and matter; force later) |
-| 9 | Bodies | A creature with body temperature, wounds and needs reacts to all of the above | Next |
-| 10 | Perception | NPC awareness from sight, light, sound and skill; someone notices a spell or its traces | |
+| 9 | Bodies | A creature with body temperature, wounds and needs reacts to all of the above | Done (first pass, see below) |
+| 10 | Perception | NPC awareness from sight, light, sound and skill; someone notices a spell or its traces | Next |
 | 11 | Ecology | Plants grow, die and rot; simple creatures feed and wander | |
 | 12 | World time | Day and night, weather, and the city changing while the player is away | |
 
@@ -95,3 +95,21 @@ for whatever the field can't give. Force comes later: it needs the kinetic
 energy of air and rubble counted first. In the viewer, C places the caster;
 F, X, V and G cast at the hovered tile, and B conjures the brush material
 there.
+
+Layer 9 gives the world bodies of living tissue. A student is skin, fat,
+muscle, bone and organs in each part, each layer with its own temperature,
+and blood carrying heat between them. They stand in a column of four tiles,
+breathe the gas of the tile their head is in, and trade heat with whatever
+is around them. Clothed in a 22 °C room their core holds at 37 °C. In 5 °C
+water they shiver as hard as a body can and still lose about a degree an
+hour. In 45 °C dry air they sweat about 0.3 L an hour and their core
+settles just above 37 °C. With their head under water they faint after about
+two minutes and die after eight; in pure nitrogen they faint within fifteen
+seconds. A 300 kJ fireball burns through the skin it strikes but leaves the
+organs untouched. A 1 m fall bruises and a 10 m fall breaks the legs. A
+stone block falling 4 m onto a head kills. They burn glycogen and fat with
+oxygen into carbon dioxide and water, eat bread and drink water, make urine,
+bleed onto the floor, and need sleep. Every joule and gram is counted with
+the world's. In the viewer, P places a student, the arrow keys walk them, T
+eats or drinks from the hovered tile, and Z puts them to sleep.
+

@@ -1,4 +1,5 @@
 using System;
+using Magischool.Sim.Bodies;
 using Magischool.Sim.Combustion;
 using Magischool.Sim.Core;
 using Magischool.Sim.Materials;
@@ -63,6 +64,11 @@ public sealed class SpellSystem : ISimSystem
                 Gutter(sim, here, bolt.Joules);
                 return true;
             }
+            if (next != here && BodySystem.TryPartAt(sim, next, out var body, out int part))
+            {
+                StrikeBody(sim, body, part, here, bolt.Joules);
+                return true;
+            }
             if (next != here && Stops(grid, next))
             {
                 Strike(sim, next, here, bolt.Joules);
@@ -111,6 +117,15 @@ public sealed class SpellSystem : ISimSystem
         Spellcasting.Heat(grid, hit, surface);
         HeatGas(grid, from, flame);
         Wake(sim, hit);
+        Wake(sim, from);
+    }
+
+    /// <summary>The bolt hits a body: half its energy lands on the skin of the part it struck, half in the air before it.</summary>
+    private static void StrikeBody(Simulation sim, Body body, int part, int from, double joules)
+    {
+        double surface = joules * SurfaceShare;
+        BodySystem.HeatSkin(sim, body, part, surface);
+        HeatGas(sim.Grid, from, joules - surface);
         Wake(sim, from);
     }
 

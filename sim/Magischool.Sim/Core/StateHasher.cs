@@ -40,6 +40,13 @@ internal static class StateHasher
         hash = SeedHash.Hash(MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()), hash);
         var bolts = sim.Projectiles.ToArray();
         hash = SeedHash.Hash(MemoryMarshal.AsBytes(bolts.AsSpan()), hash);
+        using var stream = new System.IO.MemoryStream();
+        using (var writer = new System.IO.BinaryWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write(sim.NextBodyId);
+            foreach (var body in sim.Bodies) body.Write(writer);
+        }
+        hash = SeedHash.Hash(stream.ToArray(), hash);
         return hash;
     }
 }
