@@ -113,6 +113,32 @@ public sealed record MaterialDef
     /// <summary>Share of the sound striking a surface of the material that it absorbs rather than reflects (stone 0.02, soil 0.4).</summary>
     public float SoundAbsorption { get; init; } = 0.05f;
 
+    // Soil and life (layer 11)
+    /// <summary>
+    /// Share of a solid's volume that is open pores water can fill (loam about 0.45). Zero for a
+    /// solid that holds no water; the water it holds is <see cref="Core.WorldGrid.PoreWater"/>.
+    /// </summary>
+    public float Porosity { get; init; }
+    /// <summary>
+    /// Water held by volume once the pores have drained under gravity (field capacity, loam 0.30),
+    /// and below which roots can draw no more (the wilting point, loam 0.12).
+    /// </summary>
+    public float FieldCapacity { get; init; }
+    public float WiltingPoint { get; init; }
+    /// <summary>m/s. How fast water drains through the material with its pores full (loam about 3e-6, a centimetre an hour).</summary>
+    public float SaturatedConductivity { get; init; }
+    /// <summary>For a living plant: the material it becomes when it dies (grass dies into dead grass). Null for anything not alive.</summary>
+    public string? DiesInto { get; init; }
+    /// <summary>
+    /// Per second: how fast decomposers break down dead organic matter at 20 °C with damp and air
+    /// enough, as a share of what is left (dead grass about 1e-7, half gone in three months). It
+    /// rots by the same chemistry it burns by, only slowly. Zero for anything that doesn't rot.
+    /// </summary>
+    public float DecayPerSecond { get; init; }
+
+    /// <summary>Whether this is living plant tissue.</summary>
+    public bool IsPlant => DiesInto != null;
+
     // Arcane physics (layer 7). The ether is a field of energy that pervades space; matter only
     // changes how much of it a place holds and how freely it moves.
     /// <summary>

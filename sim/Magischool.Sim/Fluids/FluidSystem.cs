@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Magischool.Sim.Core;
 using Magischool.Sim.Materials;
 using Magischool.Sim.Thermal;
@@ -94,8 +95,9 @@ public sealed partial class FluidSystem : ISimSystem
     private readonly bool _openSky;
     private readonly double _skyTemperatureK;
     private readonly double _groundPressurePa;
-    private readonly string _skyGasKey;
-    private int _skySpecies = -1;
+    private IReadOnlyList<(string Key, double Fraction)>? _skyMix;
+    // Mass share of each gas species in the sky.
+    private double[] _skyFraction = Array.Empty<double>();
     private double _skyPressure, _skyDensity, _skyMolPerKg, _skyEnergyPerKg;
     private int _preparedDepth = -1;
     private double[] _skyStepEnergy = Array.Empty<double>();
@@ -128,14 +130,13 @@ public sealed partial class FluidSystem : ISimSystem
     /// <param name="openSky">True for an open top boundary; false seals the world on all sides (lab tests).</param>
     /// <param name="skyTemperatureK">Temperature of the air beyond the top of the world.</param>
     /// <param name="groundPressurePa">Still-air pressure at z = 0, which sets the sky's pressure above the top.</param>
-    /// <param name="skyGas">The gas beyond the top.</param>
+    /// <remarks>What the sky is made of is the world's (<see cref="Simulation.SkyGas"/>).</remarks>
     public FluidSystem(bool openSky = true, double skyTemperatureK = BuiltInMaterials.RoomTemperatureK,
-        double groundPressurePa = Atmosphere.StandardPressurePa, string skyGas = BuiltInMaterials.Air)
+        double groundPressurePa = Atmosphere.StandardPressurePa)
     {
         _openSky = openSky;
         _skyTemperatureK = skyTemperatureK;
         _groundPressurePa = groundPressurePa;
-        _skyGasKey = skyGas;
     }
 
     /// <summary>Net gas that has left through the sky since this system was created, kg per species (negative: came in).</summary>
@@ -166,15 +167,17 @@ public sealed partial class FluidSystem : ISimSystem
         return mol * GasConstant * grid.GasTemperatureAt(index) / Math.Max(grid.FreeVolume(index), WorldGrid.MinFreeVolumeM3);
     }
 
-    /// <summary>Total mass of one material in the world, kg, whichever phase slot holds it.</summary>
+    /// <summary>Total mass of one material in the world, kg, whichever phase slot holds it (water counts what soil holds in its pores).</summary>
     public static double TotalMass(WorldGrid grid, ushort material)
     {
         double total = 0.0;
         int species = grid.Materials.GasIndexOf(material);
+        bool water = grid.Materials.TryGetId(BuiltInMaterials.Water, out ushort waterId) && waterId == material;
         for (int i = 0; i < grid.Count; i++)
         {
             if (species >= 0) total += grid.GasMass[species][i];
             else if (grid.Material[i] == material) total += grid.Mass[i];
+            if (water) total += grid.PoreWater[i];
         }
         return total;
     }
@@ -183,7 +186,7 @@ public sealed partial class FluidSystem : ISimSystem
     {
         var grid = sim.Grid;
         var activity = sim.Activity;
-        Prepare(grid);
+        Prepare(grid, sim.SkyGas);
         var chunks = activity.AwakeChunks();
 
         // Pass 0: record the start-of-tick state that flows are computed from.
@@ -457,7 +460,7 @@ public sealed partial class FluidSystem : ISimSystem
         {
             double stiffness = GasConstant * _skyMolPerKg * t / Math.Max(g.Free, WorldGrid.MinFreeVolumeM3);
             double dm = Math.Min(-dP / stiffness * PressureRelax, Math.Max(g.Total, _skyDensity * g.Free) * PressureCap);
-            gasFlux[_skySpecies] -= dm;
+            for (int s = 0; s < gasFlux.Length; s++) gasFlux[s] -= dm * _skyFraction[s];
             energy -= dm * _skyEnergyPerKg;
             any = dm > 0.0;
         }
@@ -466,7 +469,10 @@ public sealed partial class FluidSystem : ISimSystem
 
         if (!g.Locked && g.Total > 0.0)
         {
-            double fraction = Math.Abs(gas[_skySpecies][i] / g.Total - 1.0) > CompositionEpsilon ? DiffusionFraction : 0.0;
+            // How far the tile's makeup is from the sky's: half the summed differences, the share that would have to change.
+            double apart = 0.0;
+            for (int s = 0; s < gasFlux.Length; s++) apart += Math.Abs(gas[s][i] / g.Total - _skyFraction[s]);
+            double fraction = 0.5 * apart > CompositionEpsilon ? DiffusionFraction : 0.0;
             if (fraction > 0.0)
             {
                 double volume = Math.Min(fraction, ExchangeCap) * g.Free;
@@ -477,7 +483,7 @@ public sealed partial class FluidSystem : ISimSystem
                     energy += up * (_gasSpecificHeat[s] * t + _gasOffset[s]);
                 }
                 double down = volume * _skyDensity;
-                gasFlux[_skySpecies] -= down;
+                for (int s = 0; s < gasFlux.Length; s++) gasFlux[s] -= down * _skyFraction[s];
                 energy -= down * _skyEnergyPerKg;
                 any = true;
             }
@@ -647,7 +653,7 @@ public sealed partial class FluidSystem : ISimSystem
         EnergyAudit.SolveTemperatures(grid, i, condensed, gasJoules);
     }
 
-    private void Prepare(WorldGrid grid)
+    private void Prepare(WorldGrid grid, IReadOnlyList<(string Key, double Fraction)> sky)
     {
         if (_claim.Length != grid.Count)
         {
@@ -669,7 +675,8 @@ public sealed partial class FluidSystem : ISimSystem
             _skyStepGas = new double[table.GasCount][];
             for (int s = 0; s < _skyStepGas.Length; s++) _skyStepGas[s] = new double[plane];
         }
-        if (ReferenceEquals(_preparedFor, table) && _preparedDepth == grid.Depth) return;
+        if (ReferenceEquals(_preparedFor, table) && _preparedDepth == grid.Depth && ReferenceEquals(_skyMix, sky)) return;
+        _skyMix = sky;
         double[] offsets = EnergyAudit.OffsetsFor(table);
         _isLiquid = new bool[table.Count];
         _fullMass = new double[table.Count];
@@ -700,16 +707,29 @@ public sealed partial class FluidSystem : ISimSystem
         if (SkyGasOutKg.Length != table.GasCount) SkyGasOutKg = new double[table.GasCount];
         {
             // The sky gas also sets what "still air" means for buoyancy, so it is needed even when sealed.
-            ushort skyId = table.Id(_skyGasKey);
-            _skySpecies = table.GasIndexOf(skyId);
-            if (_skySpecies < 0) throw new InvalidOperationException($"The sky must be a gas, not '{_skyGasKey}'.");
-            var sky = table[skyId];
-            _skyMolPerKg = 1.0 / sky.MolarMass;
+            _skyFraction = new double[table.GasCount];
+            double share = 0.0;
+            foreach (var (key, fraction) in _skyMix)
+            {
+                int species = table.GasIndexOf(table.Id(key));
+                if (species < 0) throw new InvalidOperationException($"The sky must be gas, not '{key}'.");
+                if (!(fraction >= 0.0)) throw new InvalidOperationException($"The sky can't hold {fraction} of '{key}'.");
+                _skyFraction[species] += fraction;
+                share += fraction;
+            }
+            if (!(share > 0.0)) throw new InvalidOperationException("The sky holds no gas.");
+            _skyMolPerKg = 0.0;
+            _skyEnergyPerKg = 0.0;
+            for (int s = 0; s < table.GasCount; s++)
+            {
+                _skyFraction[s] /= share;
+                _skyMolPerKg += _skyFraction[s] * _gasMolPerKg[s];
+                _skyEnergyPerKg += _skyFraction[s] * (_gasSpecificHeat[s] * _skyTemperatureK + _gasOffset[s]);
+            }
             _referenceDensityFactor = _skyMolPerKg * _skyTemperatureK;
             // The sky is the next level up of the same still air Atmosphere.Balance lays down.
-            _skyPressure = Atmosphere.Profile(grid.Depth + 1, sky.MolarMass, _skyTemperatureK, _groundPressurePa)[grid.Depth];
+            _skyPressure = Atmosphere.Profile(grid.Depth + 1, 1.0 / _skyMolPerKg, _skyTemperatureK, _groundPressurePa)[grid.Depth];
             _skyDensity = _skyPressure / (GasConstant * _skyMolPerKg * _skyTemperatureK);
-            _skyEnergyPerKg = sky.SpecificHeat * _skyTemperatureK + offsets[skyId];
         }
         _preparedFor = table;
         _preparedDepth = grid.Depth;

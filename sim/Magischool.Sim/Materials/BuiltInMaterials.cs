@@ -28,6 +28,8 @@ public static class BuiltInMaterials
     public const string Bread = "bread";
     public const string Blood = "blood";
     public const string FrozenBlood = "frozen_blood";
+    public const string Grass = "grass";
+    public const string DeadGrass = "dead_grass";
 
     /// <summary>Mass fraction of oxygen in dry air.</summary>
     public const float AirOxygenFraction = 0.2314f;
@@ -63,6 +65,8 @@ public static class BuiltInMaterials
             TensileStrength = 0.01f, CompressiveStrength = 0.1f, YoungsModulus = 0.05f,
             EtherPermittivity = 6f, EtherConductivity = 0.3f, EtherBreakdown = 5e8f,
             SoundAbsorption = 0.4f,
+            // A loam: its pores drain to field capacity in a day or two and plants wilt below 12%.
+            Porosity = 0.45f, FieldCapacity = 0.30f, WiltingPoint = 0.12f, SaturatedConductivity = 3e-6f,
         },
         new()
         {
@@ -79,6 +83,8 @@ public static class BuiltInMaterials
             },
             EtherPermittivity = 5f, EtherConductivity = 0.2f, EtherBreakdown = 2e8f,
             SoundAbsorption = 0.1f,
+            // Seasoned oak lasts decades even damp.
+            DecayPerSecond = 3e-9f,
         },
         new()
         {
@@ -225,6 +231,8 @@ public static class BuiltInMaterials
             Edible = true,
             EtherPermittivity = 5f, EtherConductivity = 0.2f, EtherBreakdown = 2e8f,
             SoundAbsorption = 0.5f,
+            // Damp bread moulds through in a few weeks.
+            DecayPerSecond = 2.5e-7f,
         },
         new()
         {
@@ -247,6 +255,35 @@ public static class BuiltInMaterials
             MeltsInto = Blood,
             EtherPermittivity = 8f, EtherConductivity = 0.4f, EtherBreakdown = 1e8f,
             SoundAbsorption = 0.02f,
+        },
+        new()
+        {
+            // Living grass, leaves and stems: 75% water, the rest carbohydrate (cellulose and
+            // starch, C6H10O5), so it burns and digests as bread does: 0.25 (C6H10O5 + 6 O2 -> 6 CO2
+            // + 5 H2O), its own water leaving as steam. A meadow holds half a kilogram a tile, so it
+            // fills under a percent of the tile and air, light and bodies pass through it; its
+            // leaves shade what is under them (see Ecology.EcologySystem).
+            Key = Grass, Name = "Grass", Phase = Phase.Solid, Glyph = 'v', Color = 0x4E9A2E,
+            Density = 800f, SpecificHeat = 3500f, ThermalConductivity = 0.4f,
+            StrengthLossStartK = 373f, StrengthLossEndK = 573f, IgnitionPoint = 573f,
+            HeatOfCombustion = 2_204_300f, OxygenPerKg = 0.29602f,
+            CombustionProducts = new CombustionProduct[] { new(CarbonDioxide, 0.40713f), new(Steam, 0.88889f) },
+            Edible = true, DiesInto = DeadGrass,
+            EtherPermittivity = 8f, EtherConductivity = 0.3f, EtherBreakdown = 2e8f,
+            LightExtinction = 900f, SoundAbsorption = 0.6f,
+        },
+        new()
+        {
+            // Grass that has died and dried to 15% water: straw, or hay. It rots where it lies,
+            // by the same chemistry it burns by: 0.85 (C6H10O5 + 6 O2 -> 6 CO2 + 5 H2O).
+            Key = DeadGrass, Name = "Dead grass", Phase = Phase.Solid, Glyph = ';', Color = 0xB09A5A,
+            Density = 500f, SpecificHeat = 1700f, ThermalConductivity = 0.1f,
+            StrengthLossStartK = 373f, StrengthLossEndK = 533f, IgnitionPoint = 533f,
+            HeatOfCombustion = 13_355_500f, OxygenPerKg = 1.00648f,
+            CombustionProducts = new CombustionProduct[] { new(CarbonDioxide, 1.38425f), new(Steam, 0.62223f) },
+            Edible = true, DecayPerSecond = 1.1e-7f,
+            EtherPermittivity = 5f, EtherConductivity = 0.2f, EtherBreakdown = 2e8f,
+            LightExtinction = 600f, SoundAbsorption = 0.5f,
         },
     };
 

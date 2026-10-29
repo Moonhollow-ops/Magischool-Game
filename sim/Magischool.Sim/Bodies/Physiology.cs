@@ -260,11 +260,7 @@ public static class Physiology
     }
 
     /// <summary>Saturation vapour pressure of water, Pa (Magnus over water, good from -40 to 60 °C).</summary>
-    public static double SaturationPressurePa(double temperatureK)
-    {
-        double t = Math.Clamp(temperatureK - 273.15, -60.0, 120.0);
-        return 610.94 * Math.Exp(17.625 * t / (t + 243.04));
-    }
+    public static double SaturationPressurePa(double temperatureK) => Vapour.SaturationPressurePa(temperatureK);
 
     /// <summary>Partial pressure of steam in a tile's gas, Pa.</summary>
     public static double SteamPressurePa(World w, WorldGrid grid, int i)
