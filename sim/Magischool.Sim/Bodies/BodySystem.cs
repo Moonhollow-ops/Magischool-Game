@@ -239,6 +239,9 @@ public sealed class BodySystem : ISimSystem
         body.FallTravel = 0.0;
     }
 
+    /// <summary>The drop, m, an awake body's legs take on landing without harm: a jump down from a table.</summary>
+    public const double LegDropM = 1.0;
+
     /// <summary>Metabolic cost of walking, J per kg per metre, and muscle's efficiency at lifting.</summary>
     public const double WalkJPerKgM = 2.0, MuscleEfficiency = 0.25;
 
@@ -293,6 +296,13 @@ public sealed class BodySystem : ISimSystem
             double water = 0.85 * ke;
             EnergyAudit.AddJoules(grid, feet, water, 0.0);
             ke -= water;
+        }
+        // Awake and on sound legs, a body steps or jumps down a drop of up to LegDropM onto its
+        // feet: the legs take it, and it ends as heat in their muscle. A longer fall is a blow.
+        if (ke > 0.0 && body.Conscious && CanWalk(body) && ke <= Physiology.Kg(body) * FluidSystem.Gravity * LegDropM)
+        {
+            TakeHeatFromMuscle(body, -ke);
+            ke = 0.0;
         }
         // Shared among the outer parts as each takes the fall; the organs inside take theirs from them.
         var parts = body.Anatomy.Parts;

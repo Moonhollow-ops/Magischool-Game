@@ -4,6 +4,28 @@ The running record of what has been decided, newest first. Anything here is
 settled until the owner says otherwise; open questions live in
 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
 
+## 2026-10-29: The student keeps a log
+
+The owner's student had an eye hurt without knowing how, and asked for an event log and a
+battle log.
+
+- **The log is what the student knows** (viewer, `game/EventLog.cs`), checked after every tick.
+  Their own body they always feel: each part burned, frostbitten, struck or lost (by how its
+  burn, frostbite and trauma grew, logged again every 5% more), falls of a metre or more,
+  bleeding, blacking out, sleep, and hunger, thirst and tiredness setting in. The cause given is
+  the one they could tell: a fireball bursting within 2.5 tiles, fire beside the part, the fall
+  just taken; otherwise none. Everything else comes from their percepts: a body, fire, a glow, a
+  bolt or a loud sound newly noticed (again after 30 s out of mind). The battle log adds spells
+  cast, where fireballs burst (found by their blast), and the hurts, collapse and death of bodies
+  seen within the last second.
+- **Fireballs leave from arm's length.** The student's fireball is loosed from the tile in front
+  of their head toward the target (from the head if that tile is solid), because a bolt loosed
+  from the head at the ground beside them flew down through their own body and burned it.
+- **Short drops are stepped down, not fallen.** An awake body on sound legs lands a drop of up
+  to a metre (`BodySystem.LegDropM`) on its feet: its legs take the energy as heat in their
+  muscle. Before this, stepping down off the doorway sill bruised the eyes and ears. A longer
+  fall is a blow as before.
+
 ## 2026-10-29: Play mode shows what the student knows
 
 The owner asked that the player not be able to tell things like temperature by looking, that

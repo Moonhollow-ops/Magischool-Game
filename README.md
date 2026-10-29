@@ -42,8 +42,14 @@ from cold within arm's reach, and the sense spell reads a tile (and anyone in it
 | Space / Enter | Wait 1 second / 1 minute |
 | Z | Sleep or wake |
 | Q / E | Look a level down / up |
+| Tab | Log panel: everything, or the battle log only |
 | F5 / F9 | Save / load |
 | F1 | Switch to the debug view below, which shows everything |
+
+The log down the right side says what happened, as the student knows it: their own hurts with
+what they could tell caused them (fire beside them, a fireball bursting close, a fall), bodies
+coming into view, fire, crashes and blasts by direction, and in red the battle log: spells cast,
+where fireballs burst, and the hurts of anyone the student can see.
 
 | Debug view | Action |
 | --- | --- |
