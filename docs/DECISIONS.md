@@ -4,6 +4,32 @@ The running record of what has been decided, newest first. Anything here is
 settled until the owner says otherwise; open questions live in
 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
 
+## 2026-10-29: Play mode shows what the student knows
+
+The owner asked that the player not be able to tell things like temperature by looking, that
+spells reveal more, and for basic controls, toward a single-player adventure like Dwarf
+Fortress's adventure mode.
+
+- **Play mode is the default view; F1 is the debug view.** A new world is the test room built
+  to play in (`TestRoomGenerator.CreateForPlay`: 7 tiles deep, walls 2 m high with an open
+  doorway over a wooden sill), with a student standing outside (`PlacePlayer`).
+- **Sight is the perception layer's eye, tile by tile** (`Perception.Sight`): light on a tile,
+  through whatever lies between, must pass the eye's contrast threshold at its adaptation, so
+  the dark, smoke and walls hide things. It looks all round (a player turns their head), meets
+  each tile at its nearest face, and counts a wall seen from above by its top. Sight shows what a
+  thing is and whether it burns, never how hot it is or what is in the air.
+- **Touch** tells warm, cold or too hot to touch, for tiles within arm's reach only.
+- **The sense spell** (`CastSense`, tag 18) sends a kilojoule of ether into the target, which
+  ends as heat there like a weak heat spell, and gives the caster the full reading of the tile
+  and anyone in it as it was at that moment. With no ether to gather it reads nothing.
+- **The student's state is in words** (hungry, thirsty, tired, shivering, a part hurts), never
+  numbers, and what they heard during the last action is told by direction.
+- **Walking** follows `Bodies.Pathfinder`, a breadth-first search by the bodies layer's own
+  stepping rules (level, up one tile with headroom, down one tile, no further). The search knows
+  the true world, so for now a student can find a way through places they haven't seen.
+- **Spells are cast from the student's head**, facing the target; heat, freeze and fireball need
+  the target in sight, sense needs it in sight or in reach.
+
 ## 2026-10-29: Ecology is water, carbon and instinct
 
 The owner asked for the next layer. Life is built from the same conserved mass and energy as

@@ -35,7 +35,20 @@ public static class TestRoomGenerator
         return new Simulation(seed, grid, materials, systems);
     }
 
-    public static WorldGrid Generate(string seed, MaterialTable materials, int width = 48, int height = 32, int depth = 4)
+    /// <summary>How deep the world to play in is, tiles: room to stand a student up with sky over their head.</summary>
+    public const int PlayDepth = 7;
+
+    /// <summary>How high the room's walls are in the world to play in, tiles: two metres, over a student's eyes.</summary>
+    public const int PlayWallTiles = 4;
+
+    /// <summary>
+    /// The test room deep enough to stand in, with walls a student can't see over and a doorway with a
+    /// wooden sill in place of the door.
+    /// </summary>
+    public static Simulation CreateForPlay(string seed, MaterialTable materials, params ISimSystem[] systems) =>
+        new(seed, Generate(seed, materials, 48, 32, PlayDepth, PlayWallTiles), materials, systems);
+
+    public static WorldGrid Generate(string seed, MaterialTable materials, int width = 48, int height = 32, int depth = 4, int wallTiles = 1)
     {
         if (width < 16 || height < 12 || depth < 2)
             throw new ArgumentOutOfRangeException(nameof(width), "The test room needs at least 16 x 12 x 2 tiles.");
@@ -64,20 +77,25 @@ public static class TestRoomGenerator
         // Room walls, inset from the map edge so there is outside space to test spreading.
         int x0 = rng.NextInt(2, 5), y0 = rng.NextInt(2, 4);
         int x1 = width - rng.NextInt(3, 6), y1 = height - rng.NextInt(3, 5);
-        for (int x = x0; x <= x1; x++)
+        int wallTop = Math.Min(depth - 1, FloorZ + Math.Max(1, wallTiles) - 1);
+        for (int z = FloorZ; z <= wallTop; z++)
         {
-            grid.Set(x, y0, FloorZ, stone, room);
-            grid.Set(x, y1, FloorZ, stone, room);
-        }
-        for (int y = y0; y <= y1; y++)
-        {
-            grid.Set(x0, y, FloorZ, stone, room);
-            grid.Set(x1, y, FloorZ, stone, room);
+            for (int x = x0; x <= x1; x++)
+            {
+                grid.Set(x, y0, z, stone, room);
+                grid.Set(x, y1, z, stone, room);
+            }
+            for (int y = y0; y <= y1; y++)
+            {
+                grid.Set(x0, y, z, stone, room);
+                grid.Set(x1, y, z, stone, room);
+            }
         }
 
-        // Wooden door in the bottom wall.
+        // Wooden door in the bottom wall: a sill, open above it, where the walls are tall.
         int doorX = rng.NextInt(x0 + 2, x1 - 1);
         grid.Set(doorX, y1, FloorZ, wood, room);
+        for (int z = FloorZ + 1; z <= wallTop; z++) grid.Set(doorX, y1, z, air, room);
 
         // A capped lead pipe full of water along one inner wall: lead, water, lead.
         int pipeY = y0 + 2;
@@ -169,6 +187,31 @@ public static class TestRoomGenerator
             new SpawnBody(x, y, FloorZ, BodyPlans.Rabbit.Key, BodyPlans.DefaultClo(BodyPlans.Rabbit.Key)).Apply(sim);
             if (sim.Bodies.Count > count) n++;
         }
+    }
+
+    /// <summary>
+    /// Stands a student outside the room, on firm ground as near the middle of the bottom edge as
+    /// there is room, for a player to play. Returns their body id, or -1 if nowhere would do.
+    /// </summary>
+    public static int PlacePlayer(Simulation sim)
+    {
+        var grid = sim.Grid;
+        int cx = grid.Width / 2, cy = grid.Height - 2;
+        for (int r = 0; r < Math.Max(grid.Width, grid.Height); r++)
+        for (int dy = -r; dy <= r; dy++)
+        for (int dx = -r; dx <= r; dx++)
+        {
+            if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != r) continue;
+            int x = cx + dx, y = cy + dy;
+            if (!grid.InBounds(x, y, FloorZ)) continue;
+            int feet = grid.Index(x, y, FloorZ);
+            if (grid.HasCondensed(feet) && !grid.Materials[grid.Material[feet]].IsPlant) continue;
+            if (grid.Materials[grid.Material[grid.Index(x, y, GroundZ)]].Phase != Phase.Solid) continue;
+            int id = sim.NextBodyId;
+            new SpawnBody(x, y, FloorZ, BodyPlans.Human.Key).Apply(sim);
+            if (sim.NextBodyId > id) return id;
+        }
+        return -1;
     }
 
     private static void PlaceBlock(ref Pcg32 rng, WorldGrid grid, int minX, int minY, int maxX, int maxY,

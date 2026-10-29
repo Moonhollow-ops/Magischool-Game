@@ -38,6 +38,48 @@ public sealed record CastHeat(int CasterX, int CasterY, int CasterZ, int TargetX
 }
 
 /// <summary>
+/// A sense: the caster sends a thread of ether, up to <paramref name="Joules"/>, into the target
+/// tile and feels what it touches there. The thread gives itself up as heat in the tile, solid or
+/// liquid first, like a very weak heat spell; the reading is the caster's to know (it is not in
+/// the world, so the viewer takes it). <see cref="Gathered"/> says how much ether the cast got
+/// once it has applied: none, and the caster felt nothing.
+/// </summary>
+public sealed record CastSense(int CasterX, int CasterY, int CasterZ, int TargetX, int TargetY, int TargetZ, double Joules) : WorldCommand
+{
+    internal const byte TagValue = 18;
+    internal override byte Tag => TagValue;
+
+    /// <summary>What a sense costs by default, J: a breath of ether, far too little to warm anything you'd notice.</summary>
+    public const double DefaultJoules = 1000.0;
+
+    /// <summary>Ether the cast gathered and spent in the target, J; zero until it applies, or if it found nothing to reach.</summary>
+    public double Gathered { get; private set; }
+
+    public override void Apply(Simulation sim)
+    {
+        var grid = sim.Grid;
+        if (!grid.InBounds(TargetX, TargetY, TargetZ)) return;
+        int target = grid.Index(TargetX, TargetY, TargetZ);
+        if (grid.HeatCapacity(target) <= 0.0) return;
+        double joules = Spellcasting.Gather(sim, CasterX, CasterY, CasterZ, Joules);
+        Spellcasting.Heat(grid, target, joules);
+        Gathered = joules;
+        sim.Activity.WakeAround(TargetX, TargetY, TargetZ);
+    }
+
+    internal override void Write(BinaryWriter writer)
+    {
+        writer.Write(Tag);
+        writer.Write(CasterX); writer.Write(CasterY); writer.Write(CasterZ);
+        writer.Write(TargetX); writer.Write(TargetY); writer.Write(TargetZ);
+        writer.Write(Joules);
+    }
+
+    internal static CastSense ReadFrom(BinaryReader r) =>
+        new(r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadDouble());
+}
+
+/// <summary>
 /// A thermal sink: pulls up to <paramref name="Joules"/> of heat out of the target tile, its
 /// solid or liquid first, and hands it to the ether around the caster. At most half of the
 /// tile's heat above absolute zero goes in one cast. Water freezes through its latent heat and

@@ -167,7 +167,7 @@ public sealed class PerceptionSystem : ISimSystem
     }
 
     /// <summary>The tile a body sees from: its best eye's, or its head's if it has none.</summary>
-    private static int EyeDz(Body body)
+    public static int EyeDz(Body body)
     {
         int dz = body.HeightTiles - 1;
         double best = -1.0;

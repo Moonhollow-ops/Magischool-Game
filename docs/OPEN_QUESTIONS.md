@@ -62,3 +62,12 @@ owner answers; answered questions move to [DECISIONS.md](DECISIONS.md).
     the yards, rats, pigeons and stray cats, each a body plan or plant material on the same rules.
 15. **Seasons and seeds.** Default: they come with world time (layer 12), when days, nights and
     weather drive the light and temperature that plants already respond to.
+
+## Raised by play mode
+
+16. **Should walking only route through places the student has seen?** Default: yes, later. For
+    now the path search knows the true world, so it can find a way through unseen rooms.
+17. **What does the student see on other levels?** Default: the shown level only, as now; a
+    view that shows the highest thing in sight in each column comes with taller places to climb.
+18. **Should the sense spell cost more, or reveal less, at range?** Default: one kilojoule
+    anywhere in sight, full reading. Range and skill can shape it when classes teach it.

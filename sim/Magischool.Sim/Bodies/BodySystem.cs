@@ -140,11 +140,11 @@ public sealed class BodySystem : ISimSystem
         return (solid, liquid, gas ? Math.Max(0.0, 1.0 - solid - liquid) : 0.0);
     }
 
-    private static bool Blocked(WorldGrid grid, int x, int y, int z) =>
+    internal static bool Blocked(WorldGrid grid, int x, int y, int z) =>
         !grid.InBounds(x, y, z) || Shares(grid, grid.Index(x, y, z)).Solid >= 0.5;
 
     /// <summary>Whether a body standing with its feet at (x, y, z) has nothing to fall into.</summary>
-    private static bool Supported(WorldGrid grid, int x, int y, int z)
+    internal static bool Supported(WorldGrid grid, int x, int y, int z)
     {
         if (z == 0) return true;
         if (Shares(grid, grid.Index(x, y, z - 1)).Solid >= 0.5) return true;
@@ -242,7 +242,7 @@ public sealed class BodySystem : ISimSystem
     /// <summary>Metabolic cost of walking, J per kg per metre, and muscle's efficiency at lifting.</summary>
     public const double WalkJPerKgM = 2.0, MuscleEfficiency = 0.25;
 
-    private static bool Clear(WorldGrid grid, int x, int y, int z, int h)
+    internal static bool Clear(WorldGrid grid, int x, int y, int z, int h)
     {
         if (!grid.InBounds(x, y, z) || !grid.InBounds(x, y, z + h - 1)) return false;
         for (int k = 0; k < h; k++)

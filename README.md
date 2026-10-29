@@ -29,7 +29,23 @@ dotnet run --project tools/Magischool.Cli -c Release -- --size 400x400x12 --benc
 
 Viewer: open `game/project.godot` in Godot 4.7 .NET and press Play.
 
-| Key | Action |
+It opens in **play mode**: you are a student standing outside the old schoolroom, and you see
+only what they can see. Tiles in sight are drawn as they are, tiles seen before are drawn dim as
+you remember them, and the rest is dark. Looking never tells you a temperature; touch tells warm
+from cold within arm's reach, and the sense spell reads a tile (and anyone in it) in full.
+
+| Play mode | Action |
+| --- | --- |
+| Left click | Walk there (a step each half second of world time; Esc stops) |
+| Right click | Act on the tile: look, walk, eat, drink, cast sense / heat / freeze / fireball, sleep, wait |
+| Arrow keys | One step |
+| Space / Enter | Wait 1 second / 1 minute |
+| Z | Sleep or wake |
+| Q / E | Look a level down / up |
+| F5 / F9 | Save / load |
+| F1 | Switch to the debug view below, which shows everything |
+
+| Debug view | Action |
 | --- | --- |
 | Space / Enter | Wait 1 tick / wait 1 second (10 ticks) |
 | W / H | Wait 1 minute / wait 10 minutes |
@@ -42,6 +58,7 @@ Viewer: open `game/project.godot` in Godot 4.7 .NET and press Play.
 | Right click | Set a tile to 1000 K (Shift: 100 K). Debug only: ignores energy conservation |
 | F5 / F9 | Save / load |
 | R | New random seed |
+| P | A student stands on the hovered tile and becomes the one you steer (arrows step, T eat/drink, Z sleep) |
 | L | Toggle the light view: tiles dimmed by how brightly they are lit (full at 1000 lux, near black by 0.001) |
 | N | Sky: day (10,000 lux), full moon, starlight |
 | O | The steered student turns to face the hovered tile |
