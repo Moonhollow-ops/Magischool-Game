@@ -18,6 +18,9 @@ namespace Magischool.Game;
 /// Thin viewer over the simulation: one coloured square per tile of the
 /// current z-slice. The world only advances when an action spends ticks.
 ///
+/// It opens in play mode (see PlayMode.cs): you are a student, and see only what they can.
+/// F1 switches to this debug view, which shows everything and has these keys:
+///
 /// Space: wait 1 tick · Enter: wait 1 s · W: wait 1 min · H: wait 10 min · Q/E: z down/up
 /// Tab: heat overlay · A: air currents · S: stress · M: ether · 1-9: pick material · Left click: place it
 /// Right click: set tile to 1000 K (Shift: 100 K), a debug tool that ignores conservation
@@ -67,21 +70,25 @@ public partial class WorldView : Node2D
 
     public override void _Ready()
     {
+        SetUpMenu();
         NewWorld("moonhollow");
     }
 
     private void NewWorld(string seed)
     {
-        _sim = TestRoomGenerator.Create(seed, _materials, systems: StandardSystems.Create());
+        _sim = TestRoomGenerator.CreateForPlay(seed, _materials, StandardSystems.Create());
         TestRoomGenerator.Populate(_sim);
-        _z = Math.Min(TestRoomGenerator.FloorZ, _sim.Grid.Depth - 1);
-        _status = $"New world '{seed}'";
+        _bodyId = TestRoomGenerator.PlacePlayer(_sim);
+        _z = Steered()?.Z ?? Math.Min(TestRoomGenerator.FloorZ, _sim.Grid.Depth - 1);
+        ForgetSights();
+        _status = _debug ? $"New world '{seed}'" : "You stand outside the old schoolroom. Left click to walk, right click to act.";
         QueueRedraw();
     }
 
     /// <summary>Every player action spends world time. Commands queued by the action apply on the first tick.</summary>
     private void SpendTicks(int ticks)
     {
+        _actionStartTick = _sim.Tick;
         _heard.Clear();
         for (int t = 0; t < ticks; t++)
         {
@@ -95,7 +102,18 @@ public partial class WorldView : Node2D
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (@event is InputEventKey { Pressed: true } key)
+        if (@event is InputEventKey { Pressed: true, Keycode: Key.F1 })
+        {
+            _debug = !_debug;
+            _path = null;
+            _status = _debug ? "Debug view: everything shown (F1 to play)" : "Play mode (F1 for the debug view)";
+            QueueRedraw();
+        }
+        else if (!_debug && @event is InputEventKey { Pressed: true } playKey)
+            HandlePlayKey(playKey);
+        else if (!_debug && @event is InputEventMouseButton { Pressed: true } playClick)
+            HandlePlayClick(playClick);
+        else if (@event is InputEventKey { Pressed: true } key)
             HandleKey(key);
         else if (@event is InputEventMouseButton { Pressed: true } click)
             HandleClick(click);
@@ -256,6 +274,11 @@ public partial class WorldView : Node2D
         {
             _sim = Snapshot.FromBytes(Godot.FileAccess.GetFileAsBytes(SavePath), _materials, StandardSystems.Create());
             _z = Math.Min(_z, _sim.Grid.Depth - 1);
+            _bodyId = -1;
+            foreach (var body in _sim.Bodies)
+                if (body.Alive && !body.IsRemains && !body.Plan.Instinctive) { _bodyId = body.Id; break; }
+            _path = null;
+            ForgetSights();
             _status = $"Loaded tick {_sim.Tick}";
         }
         catch (InvalidDataException e)
@@ -266,6 +289,11 @@ public partial class WorldView : Node2D
 
     public override void _Draw()
     {
+        if (!_debug)
+        {
+            DrawPlay();
+            return;
+        }
         var grid = _sim.Grid;
         var lights = _lightOverlay ? LightField.AllSources(_sim) : null;
         for (int y = 0; y < grid.Height; y++)
@@ -313,7 +341,7 @@ public partial class WorldView : Node2D
             $"seed '{_sim.Seed}'   tick {_sim.Tick} ({_sim.ElapsedSeconds:0.0} s)   z {_z}/{grid.Depth - 1}   view {mode}   sky {_sim.SkyIlluminanceLux:0.###} lux   brush {_materials[_brush].Name}",
             fontSize: 16);
         DrawString(font, new Vector2(4, hudY + 22),
-            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | S stress | M ether | L light | N day/moon/stars | C caster F fireball X freeze V heat G charge B conjure | P student, arrows step, O face, T eat/drink, Z sleep, Y grow an eye | K grass J rabbit | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
+            "F1 play | Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | S stress | M ether | L light | N day/moon/stars | C caster F fireball X freeze V heat G charge B conjure | P student, arrows step, O face, T eat/drink, Z sleep, Y grow an eye | K grass J rabbit | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
             fontSize: 13, modulate: new Color(0.7f, 0.7f, 0.7f));
         if (_status.Length > 0)
             DrawString(font, new Vector2(4, hudY + 42), _status, fontSize: 13, modulate: new Color(1f, 0.85f, 0.4f));
