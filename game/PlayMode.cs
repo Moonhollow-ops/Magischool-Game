@@ -17,7 +17,8 @@ namespace Magischool.Game;
 ///
 /// Left click: walk there · Right click: what to do there (look, eat, drink, cast, sleep, wait) ·
 /// Arrow keys: one step · Space: wait a second · Enter: wait a minute · Z: sleep or wake ·
-/// Q/E: look a level down/up · Esc: stop walking · F5 save · F9 load · F1 debug view
+/// Q/E: look a level down/up · Esc: stop walking · Tab: whole log or battle only ·
+/// F5 save · F9 load · F1 debug view
 /// </summary>
 public partial class WorldView
 {
@@ -61,6 +62,7 @@ public partial class WorldView
         _seenFor = (-1, -1, -1);
         _reading = "";
         _path = null;
+        ForgetLog();
     }
 
     // ---------------------------------------------------------------- input
@@ -79,6 +81,7 @@ public partial class WorldView
             case Key.Q: _z = Math.Max(0, _z - 1); break;
             case Key.E: _z = Math.Min(_sim.Grid.Depth - 1, _z + 1); break;
             case Key.Escape: _path = null; _status = "You stop."; break;
+            case Key.Tab: _battleOnly = !_battleOnly; break;
             case Key.F5: Save(); break;
             case Key.F9: Load(); break;
             default: return;
@@ -176,7 +179,13 @@ public partial class WorldView
                 break;
             case Act.Fireball:
                 Face(me, x, y);
-                CastFromHead(new CastFireball(me.X, me.Y, eyeZ, x - me.X, y - me.Y, z - eyeZ, FireballJoules), "A fireball leaps from your hands.");
+                _boltsAreMine = true;
+                // Loosed from arm's length toward the target, so it doesn't fly down through your own body.
+                int lx = me.X + Math.Sign(x - me.X), ly = me.Y + Math.Sign(y - me.Y);
+                var g = _sim.Grid;
+                if (!g.InBounds(lx, ly, eyeZ) || (g.HasCondensed(g.Index(lx, ly, eyeZ)) && g.FillFraction(g.Index(lx, ly, eyeZ)) >= 0.5)
+                    || (lx == x && ly == y && eyeZ == z)) (lx, ly) = (me.X, me.Y);
+                CastFromHead(new CastFireball(lx, ly, eyeZ, x - lx, y - ly, z - eyeZ, FireballJoules), "A fireball leaps from your hands.");
                 break;
             case Act.Sleep:
                 bool wake = me.Asleep;
@@ -194,6 +203,7 @@ public partial class WorldView
 
     private void CastFromHead(WorldCommand spell, string done)
     {
+        Log(done, LogKind.Battle);
         _sim.Enqueue(spell);
         SpendTicks(TicksPerWaitAction);
         _status = done;
@@ -476,7 +486,7 @@ public partial class WorldView
         string sky = _sim.SkyIlluminanceLux >= 1000 ? "day" : _sim.SkyIlluminanceLux > 0.01 ? "moonlight" : "starlight";
         DrawString(font, new Vector2(4, hudY), $"{Clock()}   {sky}   looking {level}", fontSize: 16);
         DrawString(font, new Vector2(4, hudY + 22),
-            "LMB walk | RMB act (look, eat, drink, cast sense/heat/freeze/fireball, sleep, wait) | arrows step | Space wait 1 s | Enter wait 1 min | Z sleep | Q/E level | Esc stop | F5 save | F9 load | F1 debug view",
+            "LMB walk | RMB act (look, eat, drink, cast sense/heat/freeze/fireball, sleep, wait) | arrows step | Space wait 1 s | Enter wait 1 min | Z sleep | Q/E level | Esc stop | Tab log: all/battle | F5 save | F9 load | F1 debug view",
             fontSize: 13, modulate: new Color(0.7f, 0.7f, 0.7f));
         if (me != null)
             DrawString(font, new Vector2(4, hudY + 42), Feelings(me) + " " + Heard(me), fontSize: 13, modulate: new Color(0.95f, 0.85f, 0.75f));
@@ -486,5 +496,6 @@ public partial class WorldView
             DrawString(font, new Vector2(4, hudY + 82), LookAt(_hoverX, _hoverY, _z), fontSize: 13);
         if (_reading.Length > 0)
             DrawMultilineString(font, new Vector2(4, hudY + 102), _reading, fontSize: 13, modulate: new Color(0.75f, 0.85f, 0.95f));
+        DrawLog();
     }
 }

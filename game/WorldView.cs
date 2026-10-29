@@ -93,10 +93,12 @@ public partial class WorldView : Node2D
         for (int t = 0; t < ticks; t++)
         {
             _sim.Step();
+            Chronicle();
             // Every step, thud, crack and bang (a fire's own roar is heard but not drawn).
             foreach (var sound in _sim.Sounds)
                 if (_heard.Count < 200) _heard.Add(sound);
         }
+        _boltsAreMine = false;
         QueueRedraw();
     }
 

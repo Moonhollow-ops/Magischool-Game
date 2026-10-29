@@ -164,6 +164,21 @@ public class PlayTests
     }
 
     [Fact]
+    public void SteppingOffALedgeHalfAMetreHighDoesNotHurt()
+    {
+        var grid = Ground(10, 6, 7);
+        grid.Set(3, 3, 1, Stone, Room);
+        var sim = Start(grid, openSky: false);
+        var body = Spawn(sim, 3, 3, 2);
+        double before = Ledger(sim);
+        sim.Enqueue(new MoveBody(body.Id, 1, 0));
+        sim.Step(20);
+        Assert.Equal((4, 1), (body.X, body.Z));
+        Assert.All(body.Trauma, t => Assert.Equal(0.0, t));
+        Assert.Equal(before, Ledger(sim), Math.Abs(before) * 1e-11);
+    }
+
+    [Fact]
     public void ThereIsNoWayOutOfASealedCell()
     {
         var grid = Ground(12, 9, 5);
