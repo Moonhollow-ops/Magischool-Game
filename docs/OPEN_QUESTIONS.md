@@ -55,3 +55,10 @@ owner answers; answered questions move to [DECISIONS.md](DECISIONS.md).
 13. **Does the player physically attend class?** Default: yes. The class is a
     place in the world, the PC sits there while time passes, and anything that
     happens elsewhere during those two hours still happens.
+
+## Raised by ecology (layer 11)
+
+14. **Which plants and creatures come next?** Default: the city's own: weeds, moss and trees in
+    the yards, rats, pigeons and stray cats, each a body plan or plant material on the same rules.
+15. **Seasons and seeds.** Default: they come with world time (layer 12), when days, nights and
+    weather drive the light and temperature that plants already respond to.

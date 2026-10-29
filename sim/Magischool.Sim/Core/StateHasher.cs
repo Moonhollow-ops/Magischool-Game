@@ -37,6 +37,9 @@ internal static class StateHasher
         hash = SeedHash.Hash(MemoryMarshal.AsBytes(grid.Ether.AsSpan()), hash);
         hash = SeedHash.Hash(MemoryMarshal.AsBytes(grid.EtherAmbient.AsSpan()), hash);
         hash = SeedHash.Hash(MemoryMarshal.AsBytes(grid.EtherRefillRate.AsSpan()), hash);
+        hash = SeedHash.Hash(MemoryMarshal.AsBytes(grid.PoreWater.AsSpan()), hash);
+        hash = SeedHash.Hash(MemoryMarshal.AsBytes(grid.PoreWaterJ.AsSpan()), hash);
+        hash = SeedHash.Hash(MemoryMarshal.AsBytes(grid.PlantStress.AsSpan()), hash);
         hash = SeedHash.Hash(MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()), hash);
         var bolts = sim.Projectiles.ToArray();
         hash = SeedHash.Hash(MemoryMarshal.AsBytes(bolts.AsSpan()), hash);
@@ -46,6 +49,7 @@ internal static class StateHasher
             writer.Write(sim.NextBodyId);
             writer.Write(sim.NextProjectileId);
             writer.Write(sim.SkyIlluminanceLux);
+            foreach (var (key, fraction) in sim.SkyGas) { writer.Write(key); writer.Write(fraction); }
             foreach (var body in sim.Bodies) body.Write(writer);
         }
         hash = SeedHash.Hash(stream.ToArray(), hash);

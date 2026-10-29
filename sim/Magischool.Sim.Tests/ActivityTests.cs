@@ -68,7 +68,7 @@ public class ActivityTests
         {
             ISimSystem[] systems = sleeping
                 ? StandardSystems.Create()
-                : new ISimSystem[] { new EtherSystem(), new ThermalSystem(), new PhaseSystem(), new StructureSystem(), new FluidSystem() };
+                : new ISimSystem[] { new EtherSystem(), new ThermalSystem(), new PhaseSystem(), new StructureSystem(), new Magischool.Sim.Ecology.EcologySystem(), new FluidSystem() };
             var sim = TestRoomGenerator.Create("fidelity", Table, 64, 48, 8, systems);
             for (int i = 0; i < 3_000; i++)
             {

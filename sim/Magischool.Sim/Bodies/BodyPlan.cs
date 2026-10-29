@@ -250,6 +250,12 @@ public sealed class BodyPlan
     public required double OxygenStoreKg { get; init; }
     /// <summary>Most the stomach holds, kg.</summary>
     public required double GutMaxKg { get; init; }
+    /// <summary>How far to either side of where it faces its eyes see, degrees: about 100 for a person, nearly all round for a rabbit.</summary>
+    public double HalfFieldOfViewDeg { get; init; } = Perception.PerceptionSystem.HalfFieldOfViewDeg;
+    /// <summary>Whether it lives by instinct (it feeds, rests and flees on its own), rather than being steered.</summary>
+    public bool Instinctive { get; init; }
+    /// <summary>Ticks between its steps when it ambles; fleeing, it steps every tick.</summary>
+    public int AmbleTicks { get; init; } = 5;
 
     /// <summary>What it weighs when made, kg.</summary>
     public double InitialKg
@@ -369,7 +375,55 @@ public static class BodyPlans
         },
     };
 
-    private static readonly Dictionary<string, BodyPlan> ByKey = new() { [Human.Key] = Human };
+    /// <summary>
+    /// A wild rabbit, 1.9 kg and one tile (half a metre) long, all of it in the lowest tile. Its
+    /// big gut and caecum are a third of it; its eyes, set on the sides of its head, see nearly
+    /// all round. It lives by instinct, grazing, resting and bolting from what frightens it.
+    /// Its fur is about 2 clo.
+    /// </summary>
+    public static readonly BodyPlan Rabbit = new()
+    {
+        Key = "rabbit",
+        Name = "Rabbit",
+        // Kleiber: 70 kcal/day × kg^0.75.
+        BasalW = 5.5,
+        AwakeW = 3.0,
+        BloodKg = 0.12,
+        GlycogenMaxKg = 0.02,
+        OxygenStoreKg = 5.4e-5,
+        GutMaxKg = 0.25,
+        HalfFieldOfViewDeg = 170.0,
+        Instinctive = true,
+        Parts = new PartDef[]
+        {
+            new("body", "", 0, PartShape.Cylinder, 0.06,
+                new[] { (Tissue.Skin, 0.10), (Tissue.Fat, 0.08), (Tissue.Muscle, 0.45), (Tissue.Bone, 0.10), (Tissue.Viscera, 0.12) }, 0.45),
+            new("liver", "body", 0, PartShape.Sphere, 0.0, new[] { (Tissue.Liver, 0.06) }, 0.0, PartFunction.Liver, Internal: true),
+            new("gut", "body", 0, PartShape.Sphere, 0.0, new[] { (Tissue.Gut, 0.12) }, 0.0, PartFunction.Gut, Internal: true),
+            new("left kidney", "body", 0, PartShape.Sphere, 0.0, new[] { (Tissue.Kidney, 0.008) }, 0.0, PartFunction.Kidney, Internal: true),
+            new("right kidney", "body", 0, PartShape.Sphere, 0.0, new[] { (Tissue.Kidney, 0.008) }, 0.0, PartFunction.Kidney, Internal: true),
+            new("heart", "body", 0, PartShape.Sphere, 0.0, new[] { (Tissue.Heart, 0.006) }, 0.0, PartFunction.Heart, Internal: true),
+            new("left lung", "body", 0, PartShape.Sphere, 0.0, new[] { (Tissue.Lung, 0.008) }, 0.0, PartFunction.Lung, Internal: true),
+            new("right lung", "body", 0, PartShape.Sphere, 0.0, new[] { (Tissue.Lung, 0.008) }, 0.0, PartFunction.Lung, Internal: true),
+            new("neck", "body", 0, PartShape.Cylinder, 0.004, Limb(0.01, 0.005, 0.04, 0.01), 0.02, PartFunction.Spine),
+            new("head", "neck", 0, PartShape.Sphere, 0.012, Limb(0.02, 0.005, 0.04, 0.06), 0.08),
+            new("brain", "head", 0, PartShape.Sphere, 0.0, new[] { (Tissue.Brain, 0.01) }, 0.0, PartFunction.Brain, Internal: true),
+            new("teeth", "head", 0, PartShape.Sphere, 0.0, new[] { (Tissue.Tooth, 0.004) }, 0.0, PartFunction.Teeth, Internal: true),
+            new("left eye", "head", 0, PartShape.Sphere, 0.0003, new[] { (Tissue.Eye, 0.003) }, 0.0002, PartFunction.Eye),
+            new("right eye", "head", 0, PartShape.Sphere, 0.0003, new[] { (Tissue.Eye, 0.003) }, 0.0002, PartFunction.Eye),
+            new("left ear", "head", 0, PartShape.Cylinder, 0.006, new[] { (Tissue.Skin, 0.004), (Tissue.Cartilage, 0.004) }, 0.005, PartFunction.Ear),
+            new("right ear", "head", 0, PartShape.Cylinder, 0.006, new[] { (Tissue.Skin, 0.004), (Tissue.Cartilage, 0.004) }, 0.005, PartFunction.Ear),
+            new("left foreleg", "body", 0, PartShape.Cylinder, 0.006, Limb(0.01, 0.003, 0.04, 0.01), 0.06, PartFunction.Foot, SoleAreaM2: 0.001),
+            new("right foreleg", "body", 0, PartShape.Cylinder, 0.006, Limb(0.01, 0.003, 0.04, 0.01), 0.06, PartFunction.Foot, SoleAreaM2: 0.001),
+            new("left hind leg", "body", 0, PartShape.Cylinder, 0.012, Limb(0.02, 0.006, 0.13, 0.025), 0.10, PartFunction.Foot, SoleAreaM2: 0.002),
+            new("right hind leg", "body", 0, PartShape.Cylinder, 0.012, Limb(0.02, 0.006, 0.13, 0.025), 0.10, PartFunction.Foot, SoleAreaM2: 0.002),
+        },
+    };
+
+    /// <summary>The clothing a plan is spawned with by default: a rabbit's fur.</summary>
+    public static double DefaultClo(string key) => key == Rabbit.Key ? 2.0 : 1.0;
+
+    private static readonly Dictionary<string, BodyPlan> ByKey = new() { [Human.Key] = Human, [Rabbit.Key] = Rabbit };
 
     public static BodyPlan Get(string key) =>
         ByKey.TryGetValue(key, out var plan) ? plan : throw new ArgumentException($"No body plan '{key}'.", nameof(key));

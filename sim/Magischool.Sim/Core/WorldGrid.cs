@@ -138,6 +138,20 @@ public sealed class WorldGrid
     /// <summary>Ten minutes to close most of the gap: a drained place is mostly back within half an hour.</summary>
     public const double DefaultEtherRefillPerSecond = 1.0 / 600.0;
 
+    /// <summary>
+    /// Water held in the pores of a porous solid (soil), kg, and the energy it holds, J, counted as
+    /// the audit counts water (and ice, less its latent heat, for any of it frozen). It is apart
+    /// from the solid in the tile's condensed slot and keeps its own temperature, which the
+    /// ecology layer brings to the solid's. Zero in any tile without pores.
+    /// </summary>
+    public readonly double[] PoreWater, PoreWaterJ;
+
+    /// <summary>
+    /// How near a plant in the tile is to dying, 0 (thriving) to 1 (dead): drought, frost and heat
+    /// raise it, good days bring it back down. Meaningless where nothing grows.
+    /// </summary>
+    public readonly double[] PlantStress;
+
     public WorldGrid(int width, int height, int depth, MaterialTable materials)
     {
         if (width <= 0 || height <= 0 || depth <= 0)
@@ -169,6 +183,9 @@ public sealed class WorldGrid
         EtherAmbient = new double[Count];
         EtherRefillRate = new double[Count];
         Array.Fill(EtherRefillRate, DefaultEtherRefillPerSecond);
+        PoreWater = new double[Count];
+        PoreWaterJ = new double[Count];
+        PlantStress = new double[Count];
     }
 
     public int Index(int x, int y, int z) => (z * Height + y) * Width + x;
@@ -214,6 +231,9 @@ public sealed class WorldGrid
         Array.Clear(Skin, index * 6, 6);
         FallSpeed[index] = 0.0;
         FallTravel[index] = 0.0;
+        PoreWater[index] = 0.0;
+        PoreWaterJ[index] = 0.0;
+        PlantStress[index] = 0.0;
         ResetBonds(index);
     }
 
@@ -343,6 +363,9 @@ public sealed class WorldGrid
         Array.Copy(Ether, copy.Ether, Count);
         Array.Copy(EtherAmbient, copy.EtherAmbient, Count);
         Array.Copy(EtherRefillRate, copy.EtherRefillRate, Count);
+        Array.Copy(PoreWater, copy.PoreWater, Count);
+        Array.Copy(PoreWaterJ, copy.PoreWaterJ, Count);
+        Array.Copy(PlantStress, copy.PlantStress, Count);
         return copy;
     }
 }

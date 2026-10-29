@@ -16,7 +16,7 @@ namespace Magischool.Sim.Persistence;
 public static class Snapshot
 {
     private const uint Magic = 0x5753474D; // "MGSW"
-    public const ushort FormatVersion = 13;
+    public const ushort FormatVersion = 14;
 
     public static void Save(Simulation sim, Stream stream)
     {
@@ -60,6 +60,9 @@ public static class Snapshot
         writer.Write(MemoryMarshal.AsBytes(grid.Ether.AsSpan()));
         writer.Write(MemoryMarshal.AsBytes(grid.EtherAmbient.AsSpan()));
         writer.Write(MemoryMarshal.AsBytes(grid.EtherRefillRate.AsSpan()));
+        writer.Write(MemoryMarshal.AsBytes(grid.PoreWater.AsSpan()));
+        writer.Write(MemoryMarshal.AsBytes(grid.PoreWaterJ.AsSpan()));
+        writer.Write(MemoryMarshal.AsBytes(grid.PlantStress.AsSpan()));
         writer.Write(MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()));
         writer.Write(sim.Projectiles.Count);
         foreach (var bolt in sim.Projectiles)
@@ -70,6 +73,8 @@ public static class Snapshot
         }
         writer.Write(sim.NextProjectileId);
         writer.Write(sim.SkyIlluminanceLux);
+        writer.Write(sim.SkyGas.Count);
+        foreach (var (key, fraction) in sim.SkyGas) { writer.Write(key); writer.Write(fraction); }
         writer.Write(sim.NextBodyId);
         writer.Write(sim.Bodies.Count);
         foreach (var body in sim.Bodies) body.Write(writer);
@@ -125,6 +130,9 @@ public static class Snapshot
         ReadExactly(reader, MemoryMarshal.AsBytes(grid.Ether.AsSpan()));
         ReadExactly(reader, MemoryMarshal.AsBytes(grid.EtherAmbient.AsSpan()));
         ReadExactly(reader, MemoryMarshal.AsBytes(grid.EtherRefillRate.AsSpan()));
+        ReadExactly(reader, MemoryMarshal.AsBytes(grid.PoreWater.AsSpan()));
+        ReadExactly(reader, MemoryMarshal.AsBytes(grid.PoreWaterJ.AsSpan()));
+        ReadExactly(reader, MemoryMarshal.AsBytes(grid.PlantStress.AsSpan()));
 
         var sim = new Simulation(seed, grid, materials, systems) { Tick = tick };
         ReadExactly(reader, MemoryMarshal.AsBytes(sim.Activity.Awake.AsSpan()));
@@ -140,6 +148,9 @@ public static class Snapshot
         }
         sim.NextProjectileId = reader.ReadInt64();
         sim.SkyIlluminanceLux = reader.ReadDouble();
+        var sky = new (string, double)[reader.ReadInt32()];
+        for (int k = 0; k < sky.Length; k++) sky[k] = (reader.ReadString(), reader.ReadDouble());
+        sim.SkyGas = sky;
         sim.NextBodyId = reader.ReadInt32();
         int bodies = reader.ReadInt32();
         for (int b = 0; b < bodies; b++) sim.Bodies.Add(Bodies.Body.Read(reader));

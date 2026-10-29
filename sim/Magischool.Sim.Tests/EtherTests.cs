@@ -49,7 +49,7 @@ public class EtherTests
 
     /// <summary>Energy of the world less what came up from the reservoir and what falling released: never changes.</summary>
     private static double Ledger(Simulation sim) =>
-        EnergyAudit.TotalJoules(sim.Grid) - Field(sim).ReservoirInJ - sim.Systems.OfType<StructureSystem>().Single().ReleasedPotentialJ;
+        EnergyAudit.TotalJoules(sim.Grid) - Field(sim).ReservoirInJ - sim.Systems.OfType<StructureSystem>().Single().ReleasedPotentialJ - sim.Systems.OfType<Magischool.Sim.Ecology.EcologySystem>().Single().LightJ;
 
     [Fact]
     public void AnEmptyPlaceFillsFromTheReservoirAndEveryJouleIsCounted()

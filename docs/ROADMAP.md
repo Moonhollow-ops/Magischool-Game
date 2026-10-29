@@ -17,8 +17,8 @@ cover it, including a determinism check.
 | 8 | Spells as field inputs | Spells only add heat, force, charge or matter; the frozen pipe bursts with no special code | Done (heat, charge and matter; force later) |
 | 9 | Bodies | A creature with body temperature, wounds and needs reacts to all of the above | Done (first pass, see below) |
 | 10 | Perception | NPC awareness from sight, light, sound and skill; someone notices a spell or its traces | Done (light and sound; skill later) |
-| 11 | Ecology | Plants grow, die and rot; simple creatures feed and wander | Next |
-| 12 | World time | Day and night, weather, and the city changing while the player is away | |
+| 11 | Ecology | Plants grow, die and rot; simple creatures feed and wander | Done (grass and rabbits; more kinds later) |
+| 12 | World time | Day and night, weather, and the city changing while the player is away | Next |
 
 Perception (10) was added because magic must stay secret: being seen, heard,
 or leaving evidence is a core consequence of using magic.
@@ -148,3 +148,20 @@ witness who sees a fireball fly remembers it, with where and when. In the viewer
 light, N turns day to moonlight to starlight, O turns the student, sounds ring where they were
 made, and the line under a student lists what they last saw and heard.
 
+Layer 11 brings the ground to life, every ten seconds for the time since, over the whole world.
+Soil holds water in its pores, drains to field capacity in a day or two by Darcy's law through
+its own suction, soaks up puddles lying on it, and dries as fast as the light on it can pay the
+latent heat. Grass in a tile over soil catches the light on its leaves, fixes carbon dioxide from
+its air into carbohydrate with water from its roots and gives the oxygen back, up to about 30
+µmol per square metre a second in full sun; it respires a quarter of what it fixes and 1.5% of
+itself a day, so it shrinks in the dark, draws down the carbon dioxide of a closed room, and
+seeds the ground beside it about once a week. Two weeks of drought, a night of hard frost or an
+hour of heat kill it into dead grass, which rots by its own burning chemistry when damp and
+warm, a few percent a week; dead bodies rot away to bone. Light carries no energy in the world,
+so what plants store and leaves breathe out is counted as coming in from light, and with that
+the world's energy and mass stay exact. The open air now has carbon dioxide and humidity, and
+the sky beyond it the same. Rabbits (1.9 kg of living tissue, eyes that see all round but
+straight behind) graze when hungry, drink when thirsty, sleep when tired, amble about, and bolt
+from people, fire, bolts and loud noises, all through the same commands a student uses, so a
+rabbit's run is paid for from its own fuel. The test room now has damp soil, grass on most of
+it and three rabbits; in the viewer K plants grass and J lets a rabbit loose.

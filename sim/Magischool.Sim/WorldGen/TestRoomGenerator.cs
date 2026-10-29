@@ -1,9 +1,12 @@
 using System;
+using Magischool.Sim.Bodies;
 using Magischool.Sim.Core;
+using Magischool.Sim.Ecology;
 using Magischool.Sim.Determinism;
 using Magischool.Sim.Ether;
 using Magischool.Sim.Fluids;
 using Magischool.Sim.Materials;
+using Magischool.Sim.Thermal;
 
 namespace Magischool.Sim.WorldGen;
 
@@ -84,6 +87,8 @@ public static class TestRoomGenerator
             grid.Set(x, pipeY - 1, FloorZ, lead, room);
             grid.Set(x, pipeY, FloorZ, cap ? lead : water, room);
             grid.Set(x, pipeY + 1, FloorZ, lead, room);
+            // Laid on stone, so the water doesn't soak away into soil.
+            grid.Set(x, pipeY, GroundZ, stone, room);
         }
 
         // Props inside the room, never on the pipe rows.
@@ -114,6 +119,56 @@ public static class TestRoomGenerator
         Atmosphere.Balance(grid, air, room);
         EtherSystem.Balance(grid);
         return grid;
+    }
+
+    /// <summary>Rabbits <see cref="Populate"/> lets loose.</summary>
+    public const int Rabbits = 3;
+
+    /// <summary>
+    /// Brings a test room to life: open-air gases (carbon dioxide and some humidity) in the world
+    /// and its sky, the soil damp to field capacity, grass on most of the soil open to the air, and
+    /// a few rabbits outside. World generation: the mass and energy it adds are not counted.
+    /// </summary>
+    public static void Populate(Simulation sim)
+    {
+        var grid = sim.Grid;
+        var table = sim.Materials;
+        var rng = new Pcg32(SeedHash.Derive(sim.Seed, "life"));
+        float room = BuiltInMaterials.RoomTemperatureK;
+        var outdoor = Atmosphere.Outdoor(room);
+        Atmosphere.Mix(grid, outdoor);
+        Atmosphere.Balance(grid, table.Id(BuiltInMaterials.Air), room);
+        sim.SkyGas = outdoor;
+
+        ushort water = table.Id(BuiltInMaterials.Water), grass = table.Id(BuiltInMaterials.Grass);
+        double waterJPerKg = table[water].SpecificHeat * room + EnergyAudit.OffsetsFor(table)[water];
+        double grassJPerKg = table[grass].SpecificHeat * room + EnergyAudit.OffsetsFor(table)[grass];
+        int plane = grid.Width * grid.Height;
+        for (int i = 0; i < grid.Count; i++)
+        {
+            double v = EcologySystem.SoilVolume(grid, i);
+            if (v <= 0.0) continue;
+            grid.PoreWater[i] = table[grid.Material[i]].FieldCapacity * v * EcologySystem.WaterDensity;
+            grid.PoreWaterJ[i] = grid.PoreWater[i] * waterJPerKg;
+            int above = i + plane;
+            if (above >= grid.Count || grid.HasCondensed(above) || !rng.Chance(0.8f)) continue;
+            // A sward of 25 to 100 g of dry grass on the tile's quarter square metre.
+            double kg = (0.025 + 0.075 * rng.NextFloat()) / EcologySystem.DryShare(table[grass]);
+            EcologySystem.Plant(grid, above, grass, kg, kg * grassJPerKg);
+        }
+
+        for (int n = 0, tries = 0; n < Rabbits && tries < 200; tries++)
+        {
+            int x = rng.NextInt(0, grid.Width), y = rng.NextInt(0, grid.Height);
+            int i = grid.Index(x, y, FloorZ);
+            if (grid.HasCondensed(i) && grid.Materials[grid.Material[i]].Phase != Phase.Solid) continue;
+            if (grid.HasCondensed(i) && grid.FillFraction(i) >= 0.5) continue;
+            int ground = grid.Index(x, y, GroundZ);
+            if (grid.Materials[grid.Material[ground]].Phase != Phase.Solid) continue;
+            int count = sim.Bodies.Count;
+            new SpawnBody(x, y, FloorZ, BodyPlans.Rabbit.Key, BodyPlans.DefaultClo(BodyPlans.Rabbit.Key)).Apply(sim);
+            if (sim.Bodies.Count > count) n++;
+        }
     }
 
     private static void PlaceBlock(ref Pcg32 rng, WorldGrid grid, int minX, int minY, int maxX, int maxY,

@@ -4,6 +4,48 @@ The running record of what has been decided, newest first. Anything here is
 settled until the owner says otherwise; open questions live in
 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
 
+## 2026-10-29: Ecology is water, carbon and instinct
+
+The owner asked for the next layer. Life is built from the same conserved mass and energy as
+everything else, with the rates taken from field and crop science rather than tuned for show.
+
+- **Slow and whole-world.** Ecology runs once every 100 ticks (10 s) for the time since, over
+  every tile, awake or asleep: grass grows in hours and rots in weeks, so a sleeping chunk still
+  grows. What it changes stirs only that tile's chunk.
+- **Soil water** is held in the soil tile's pores (`WorldGrid.PoreWater`, with its own energy,
+  frozen or not), not as a liquid in the tile, because a tile holds one solid or liquid.
+  Campbell's water-retention and conductivity curves are fitted to each soil's field capacity
+  (3.3 m suction) and wilting point (150 m); water moves by Darcy's law, soaks in from water lying
+  on or beside soil, and evaporates by Priestley–Taylor from the light on it.
+- **Plants are materials.** Grass is a solid in the air tile over soil (under 1% full, so air,
+  light and bodies pass through). It is 75% water and 25% carbohydrate (C6H10O5) and burns,
+  digests and rots as that; its heat of combustion and heat capacity are its starch's and water's,
+  so it dies into dead grass and water without warming or cooling. Photosynthesis is a canopy
+  light-response curve (quantum yield 0.05, 30 µmol/(m²·s) in full sun, Beer's law over leaf area
+  8 m²/kg dry) times carbon dioxide, warmth and water factors. The water a plant holds goes back
+  to its soil when it respires, not into the air.
+- **Light brings the energy.** Light carries no energy in the world (layer 10), so the energy
+  plants store and the latent heat of the water they and the soil give off are counted in
+  `EcologySystem.LightJ`; every energy test counts it as coming in from outside, like the
+  reservoir under the ley node.
+- **The air has carbon dioxide and humidity.** Air stays a fixed mix of oxygen and nitrogen; the
+  open air adds 420 ppm of carbon dioxide (with the nitrogen it would leave had it been breathed
+  out of air) and 50% humidity. The sky's makeup (`Simulation.SkyGas`) is world state, pure air
+  unless world generation says otherwise, so the lab tests keep their exact air.
+- **Decay is slow burning.** Dead matter oxidises by its own combustion chemistry at its
+  material's rate (dead grass about 1% a day at 20 °C when damp), doubling every 10 °C, stopped by
+  frost or 60 °C, and only with oxygen. Remains' soft tissue seeps out over weeks and their fat
+  burns away, leaving bone.
+- **Creatures run on instinct, through commands.** `InstinctSystem` runs before bodies and keeps no
+  state: a creature acts on its percepts and its needs, through the same step, eat, drink and
+  sleep commands a student uses, so its body pays for everything it does. Rabbits bolt from
+  bodies not of their kind, fire, bolts and sounds 20 dB over what they can hear; sleep when
+  tired; drink when thirsty; graze living plants when hungry; and otherwise amble. A body plan
+  sets its field of view (a rabbit's 170° to either side, so a small blind spot behind).
+- **Populating is world generation.** `TestRoomGenerator.Populate` adds the outdoor air, damp soil,
+  grass and three rabbits, and is called by the viewer; the plain test room the older tests use
+  is unchanged.
+
 ## 2026-10-28: Perception is light and sound
 
 The owner asked to keep building world physics; layer 10 is the senses, because magic must stay

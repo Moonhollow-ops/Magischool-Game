@@ -45,10 +45,12 @@ Viewer: open `game/project.godot` in Godot 4.7 .NET and press Play.
 | L | Toggle the light view: tiles dimmed by how brightly they are lit (full at 1000 lux, near black by 0.001) |
 | N | Sky: day (10,000 lux), full moon, starlight |
 | O | The steered student turns to face the hovered tile |
-| Hover | Read a tile: its solid or liquid, gases, temperature, pressure, whether it is burning, loose or falling, and its load |
+| K | Plant a grass seedling on the hovered tile (open air over soil) |
+| J | Let a rabbit loose on the hovered tile |
+| Hover | Read a tile: its solid or liquid, gases, temperature, pressure, whether it is burning, loose or falling, its load, its soil water and its grass |
 
 Smoke darkens the tiles it is in, and an orange dot marks wood that is burning. A black line shows
-which way each student faces, white rings show the sounds the last action made, and the last line
+which way each student and rabbit faces (rabbits are the small brown dots), white rings show the sounds the last action made, and the last line
 of the readout lists what the hovered or steered student last saw and heard.
 
 ## Simulation rules

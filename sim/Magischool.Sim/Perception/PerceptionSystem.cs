@@ -194,11 +194,15 @@ public sealed class PerceptionSystem : ISimSystem
     }
 
     /// <summary>Whether a body facing (fx, fy) has a point (dx, dy) away from it within its field of view.</summary>
-    public static bool InView(int fx, int fy, double dx, double dy)
+    public static bool InView(int fx, int fy, double dx, double dy) => InView(fx, fy, dx, dy, HalfFieldOfViewDeg);
+
+    /// <summary>The same, for eyes that see <paramref name="halfFieldDeg"/> to either side (a rabbit's nearly all round).</summary>
+    public static bool InView(int fx, int fy, double dx, double dy, double halfFieldDeg)
     {
+        if (halfFieldDeg >= 180.0) return true;
         double f = Math.Sqrt(fx * fx + fy * fy), d = Math.Sqrt(dx * dx + dy * dy);
         if (f == 0.0 || d < 1e-9) return true;
-        return (fx * dx + fy * dy) / (f * d) >= Math.Cos(HalfFieldOfViewDeg * Math.PI / 180.0);
+        return (fx * dx + fy * dy) / (f * d) >= Math.Cos(halfFieldDeg * Math.PI / 180.0);
     }
 
     private void Look(Simulation sim, Body body)
@@ -216,7 +220,7 @@ public sealed class PerceptionSystem : ISimSystem
         foreach (var other in sim.Bodies)
         {
             if (ReferenceEquals(other, body)) continue;
-            if (!InView(body.FacingX, body.FacingY, other.X + 0.5 - ex, other.Y + 0.5 - ey)) continue;
+            if (!InView(body.FacingX, body.FacingY, other.X + 0.5 - ex, other.Y + 0.5 - ey, body.Plan.HalfFieldOfViewDeg)) continue;
             double signal = 0.0, solidAngle = 0.0;
             for (int dz = 0; dz < other.HeightTiles; dz++)
             {
@@ -247,7 +251,7 @@ public sealed class PerceptionSystem : ISimSystem
         foreach (var light in _lights)
         {
             double dx = light.X - ex, dy = light.Y - ey, dz = light.Z - ez;
-            if (!InView(body.FacingX, body.FacingY, dx, dy)) continue;
+            if (!InView(body.FacingX, body.FacingY, dx, dy, body.Plan.HalfFieldOfViewDeg)) continue;
             double cd = LightField.IntensityToward(light, ex, ey, ez, out double metres);
             if (!(cd > 0.0)) continue;
             // A face seen at a slant shows less of itself, and looks just as bright.

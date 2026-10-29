@@ -25,8 +25,10 @@ namespace Magischool.Sim.Thermal;
 /// of water (a tile 92% full), and a tile of water freezes into ice that
 /// needs 109% of a tile.
 /// </para>
-/// Boiling points don't yet depend on pressure, and there is no evaporation
-/// below the boiling point (puddles don't dry); both need vapour pressure.
+/// Water vapour condenses only once the gas holding it is saturated (past its vapour pressure,
+/// by the Magnus formula), so air carries humidity and dew forms where it cools. Boiling points
+/// don't yet depend on pressure, and open water doesn't yet evaporate below its boiling point
+/// (puddles don't dry); only soil and leaves give off vapour (see Ecology.EcologySystem).
 ///
 /// Runs after <see cref="ThermalSystem"/> each tick, on awake chunks only, in
 /// parallel (each tile is independent). Energy is conserved exactly;
@@ -191,6 +193,13 @@ public sealed class PhaseSystem : ISimSystem
 
             double deficit = (c.TemperatureK - t) * GasCapacity(grid, i);
             double dm = Math.Min(gasKg, deficit / c.LatentPerKg);
+            // Water vapour condenses only past saturation, and half the excess at a time: its latent
+            // heat warms the gas, which then holds more.
+            if (c.Saturating)
+            {
+                if (PhaseRules.ExcessVapourKg(grid, i, s) <= PhaseRules.VapourToleranceKg) continue;
+                dm = SaturatedCondensate(grid, i, gasKg, dm, c.LatentPerKg);
+            }
             if (dm <= 0.0) continue;
 
             // The liquid forms at the condensation point; the latent heat it gives up stays in the gas.
@@ -207,6 +216,27 @@ public sealed class PhaseSystem : ISimSystem
             changed = true;
         }
         return changed;
+    }
+
+    /// <summary>
+    /// How much water vapour condenses out of a saturated tile's gas, kg: until what is left is
+    /// what the gas holds at the temperature the latent heat given up warms it to, and no more
+    /// than <paramref name="most"/>.
+    /// </summary>
+    private static double SaturatedCondensate(WorldGrid grid, int i, double vapourKg, double most, double latentPerKg)
+    {
+        double volume = Math.Max(grid.FreeVolume(i), WorldGrid.MinFreeVolumeM3);
+        double t = grid.GasTemperatureAt(i), capacity = GasCapacity(grid, i);
+        double Left(double dm) => vapourKg - dm - Vapour.SaturationKg(volume, t + latentPerKg * dm / capacity);
+        if (Left(most) >= 0.0) return most;
+        double lo = 0.0, hi = most;
+        for (int k = 0; k < 40; k++)
+        {
+            double mid = 0.5 * (lo + hi);
+            if (Left(mid) > 0.0) lo = mid; else hi = mid;
+        }
+        // The last microgram goes with the rest.
+        return vapourKg - lo <= PhaseRules.VapourToleranceKg ? most : lo;
     }
 
     /// <summary>Energy, as the audit counts it, of one kg of a material at a temperature.</summary>

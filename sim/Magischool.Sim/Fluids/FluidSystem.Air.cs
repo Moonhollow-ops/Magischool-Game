@@ -320,7 +320,7 @@ public sealed partial class FluidSystem
         else
         {
             double mass = volume * _skyDensity;
-            gasFlux[_skySpecies] -= mass;
+            for (int s = 0; s < gasFlux.Length; s++) gasFlux[s] -= mass * _skyFraction[s];
             energy -= mass * _skyEnergyPerKg;
         }
         return true;

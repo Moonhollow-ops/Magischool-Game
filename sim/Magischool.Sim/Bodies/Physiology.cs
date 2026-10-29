@@ -43,6 +43,8 @@ public static class Physiology
     public const double LipogenesisFat = 0.41207, LipogenesisCO2 = 0.48295;
 
     public const double MolarMassO2 = 0.031998;
+    /// <summary>Starch per carbon atom fixed, kg/mol: C6H10O5 is 0.162141 kg/mol over six carbons.</summary>
+    public const double MolarMassStarchPerCarbon = 0.162141 / 6.0;
 
     /// <summary>Fat burnable from a fat layer: all but what keeps it half water.</summary>
     public static double BurnableFat(Body body, int n) => Math.Max(0.0, body.Mass[n] - 2.0 * body.WaterKg[n]);
@@ -260,11 +262,7 @@ public static class Physiology
     }
 
     /// <summary>Saturation vapour pressure of water, Pa (Magnus over water, good from -40 to 60 °C).</summary>
-    public static double SaturationPressurePa(double temperatureK)
-    {
-        double t = Math.Clamp(temperatureK - 273.15, -60.0, 120.0);
-        return 610.94 * Math.Exp(17.625 * t / (t + 243.04));
-    }
+    public static double SaturationPressurePa(double temperatureK) => Vapour.SaturationPressurePa(temperatureK);
 
     /// <summary>Partial pressure of steam in a tile's gas, Pa.</summary>
     public static double SteamPressurePa(World w, WorldGrid grid, int i)

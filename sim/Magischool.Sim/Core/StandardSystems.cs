@@ -1,5 +1,6 @@
 using Magischool.Sim.Bodies;
 using Magischool.Sim.Combustion;
+using Magischool.Sim.Ecology;
 using Magischool.Sim.Ether;
 using Magischool.Sim.Fluids;
 using Magischool.Sim.Magic;
@@ -21,11 +22,13 @@ public static class StandardSystems
     {
         new EtherSystem(), // first, so a rupture's heat spreads the same tick
         new SpellSystem(), // spells in flight strike before heat spreads
+        new InstinctSystem(), // creatures decide before their bodies act
         new BodySystem(), // bodies trade heat and breath with their tiles before heat spreads
         new ThermalSystem(),
         new PhaseSystem(),
         new CombustionSystem(),
         new StructureSystem(), // before fluids, so gas and water fill where rubble fell from
+        new EcologySystem(), // every ten seconds: soil water, plants and decay, before fluids carry off what they breathe
         new FluidSystem(openSky, skyTemperatureK), // after phase changes, so fresh steam moves the same tick
         new PerceptionSystem(), // reads the finished tick: sees and hears what the other layers made
         new ActivitySystem(), // always last: decides what sleeps next tick

@@ -167,7 +167,8 @@ public class PhaseTests
         var systems = StandardSystems.Create(openSky: false);
         var sim = TestRoomGenerator.Create("phase-room", Table, systems: systems);
         // The room's ley node draws on the reservoir under the world, and its crystal may shatter and fall.
-        double Outside() => systems.OfType<EtherSystem>().Single().ReservoirInJ + systems.OfType<StructureSystem>().Single().ReleasedPotentialJ;
+        double Outside() => systems.OfType<EtherSystem>().Single().ReservoirInJ + systems.OfType<StructureSystem>().Single().ReleasedPotentialJ
+            + systems.OfType<Magischool.Sim.Ecology.EcologySystem>().Single().LightJ;
         var grid = sim.Grid;
         // Melting a full cubic metre of ice in a warm room takes hours, so start the ice
         // 99.9% of the way through melting and the floor air hot, and watch it finish.

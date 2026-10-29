@@ -24,13 +24,16 @@ internal sealed class PhaseRules
         public readonly double TemperatureK;
         public readonly double LatentPerKg;
         public readonly ushort Into;
+        /// <summary>For a gas: it condenses only past its saturation vapour pressure (water vapour), not as soon as it is below its boiling point.</summary>
+        public readonly bool Saturating;
 
-        public Transition(double temperatureK, double latentPerKg, ushort into)
+        public Transition(double temperatureK, double latentPerKg, ushort into, bool saturating = false)
         {
             Exists = true;
             TemperatureK = temperatureK;
             LatentPerKg = latentPerKg;
             Into = into;
+            Saturating = saturating;
         }
     }
 
@@ -52,7 +55,8 @@ internal sealed class PhaseRules
             if (def.Phase == Phase.Liquid && def.BoilsInto != null)
                 Boil[id] = new Transition(def.BoilingPoint, def.LatentHeatVaporization, table.Id(def.BoilsInto));
             if (def.Phase == Phase.Gas && def.CondensesInto != null)
-                Condense[table.GasIndexOf(id)] = new Transition(def.BoilingPoint, def.LatentHeatVaporization, table.Id(def.CondensesInto));
+                Condense[table.GasIndexOf(id)] = new Transition(def.BoilingPoint, def.LatentHeatVaporization, table.Id(def.CondensesInto),
+                    saturating: def.CondensesInto == BuiltInMaterials.Water);
         }
     }
 
@@ -73,9 +77,17 @@ internal sealed class PhaseRules
         for (int s = 0; s < Condense.Length; s++)
         {
             var c = Condense[s];
-            if (c.Exists && gasT < c.TemperatureK && grid.GasMass[s][i] > 0.0 && (m == MaterialTable.Empty || m == c.Into))
+            if (c.Exists && gasT < c.TemperatureK && grid.GasMass[s][i] > 0.0 && (m == MaterialTable.Empty || m == c.Into)
+                && (!c.Saturating || ExcessVapourKg(grid, i, s) > VapourToleranceKg))
                 return false;
         }
         return true;
     }
+
+    /// <summary>Vapour beyond saturation too little to bother condensing, kg: a microgram.</summary>
+    public const double VapourToleranceKg = 1e-9;
+
+    /// <summary>Water vapour in a tile beyond what its gas can hold at its temperature, kg (negative: room for more).</summary>
+    public static double ExcessVapourKg(WorldGrid grid, int i, int species) =>
+        grid.GasMass[species][i] - Vapour.SaturationKg(System.Math.Max(grid.FreeVolume(i), WorldGrid.MinFreeVolumeM3), grid.GasTemperatureAt(i));
 }

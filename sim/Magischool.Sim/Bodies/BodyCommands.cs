@@ -112,7 +112,7 @@ public sealed record EatFood(int Id, int X, int Y, int Z, double Kg) : WorldComm
         var w = Physiology.For(sim.Materials);
         // What it would hold at body temperature: the stomach counts it at that.
         double atBody = kg * w.GasJPerKg(grid.Material[i], Physiology.ReferenceK);
-        double joules = Take(grid, i, kg);
+        double joules = Take(grid, i, ref kg);
         double water = kg * (1.0 - carbShare);
         body.GutWaterKg += water;
         body.GutWaterJ += water * w.WaterJPerKg;
@@ -140,14 +140,18 @@ public sealed record EatFood(int Id, int X, int Y, int Z, double Kg) : WorldComm
         return starch;
     }
 
-    /// <summary>Takes kg of a tile's solid or liquid, returning the energy it held; the rest of the tile keeps its temperature.</summary>
-    internal static double Take(WorldGrid grid, int i, double kg)
+    /// <summary>
+    /// Takes kg of a tile's solid or liquid, returning the energy it held; the rest of the tile
+    /// keeps its temperature. Crumbs under a microgram go too, and are counted in <paramref name="kg"/>.
+    /// </summary>
+    internal static double Take(WorldGrid grid, int i, ref double kg)
     {
         double condensed = EnergyAudit.CondensedJoules(grid, i), gas = EnergyAudit.GasJoules(grid, i);
         double mass = grid.Mass[i];
         double joules = condensed * kg / mass;
         if (mass - kg < 1e-9)
         {
+            kg = mass;
             joules = condensed;
             grid.SetCondensed(i, MaterialTable.Empty, 0.0);
         }
@@ -188,7 +192,7 @@ public sealed record DrinkWater(int Id, int X, int Y, int Z, double Kg) : WorldC
         double kg = Math.Min(Math.Min(Kg, room), grid.Mass[i]);
         if (!(kg > 0.0)) return;
         var w = Physiology.For(sim.Materials);
-        double joules = EatFood.Take(grid, i, kg);
+        double joules = EatFood.Take(grid, i, ref kg);
         body.GutWaterKg += kg;
         body.GutWaterJ += kg * w.WaterJPerKg;
         BodySystem.HeatParts(body, PartFunction.Gut, joules - kg * w.WaterJPerKg);

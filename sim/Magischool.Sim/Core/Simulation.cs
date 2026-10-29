@@ -72,6 +72,14 @@ public sealed class Simulation
     public double SkyIlluminanceLux { get; internal set; } = Perception.LightField.OvercastDayLux;
 
     /// <summary>
+    /// What the air beyond the world is made of, as mass shares of gases by key: what comes in
+    /// through an open sky, and what still air means for buoyancy. Pure air unless the world was
+    /// made with open air's carbon dioxide and moisture (<see cref="Fluids.Atmosphere.Outdoor"/>).
+    /// Part of the world state.
+    /// </summary>
+    public IReadOnlyList<(string Key, double Fraction)> SkyGas { get; set; } = new[] { (Magischool.Sim.Materials.BuiltInMaterials.Air, 1.0) };
+
+    /// <summary>
     /// Sounds made during the current tick, in the order they were made: what the perception
     /// layer hears. Cleared at the start of each tick, so after a step it holds that tick's.
     /// Not part of the world state: a sound is gone within the tick it is heard in.

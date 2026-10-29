@@ -35,6 +35,7 @@ public abstract record WorldCommand
             Magic.CastGraft.TagValue => Magic.CastGraft.ReadFrom(reader),
             Perception.FaceBody.TagValue => Perception.FaceBody.ReadFrom(reader),
             Perception.SetSkyLight.TagValue => Perception.SetSkyLight.ReadFrom(reader),
+            Ecology.PlantSeedling.TagValue => Ecology.PlantSeedling.ReadFrom(reader),
             _ => throw new InvalidDataException($"Unknown command tag {tag}."),
         };
     }
