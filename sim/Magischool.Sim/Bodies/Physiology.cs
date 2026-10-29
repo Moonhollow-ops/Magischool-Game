@@ -43,6 +43,8 @@ public static class Physiology
     public const double LipogenesisFat = 0.41207, LipogenesisCO2 = 0.48295;
 
     public const double MolarMassO2 = 0.031998;
+    /// <summary>Starch per carbon atom fixed, kg/mol: C6H10O5 is 0.162141 kg/mol over six carbons.</summary>
+    public const double MolarMassStarchPerCarbon = 0.162141 / 6.0;
 
     /// <summary>Fat burnable from a fat layer: all but what keeps it half water.</summary>
     public static double BurnableFat(Body body, int n) => Math.Max(0.0, body.Mass[n] - 2.0 * body.WaterKg[n]);

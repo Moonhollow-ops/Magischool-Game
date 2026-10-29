@@ -58,7 +58,7 @@ public class BodyTests
 
     private static double Ledger(Simulation sim) =>
         EnergyAudit.TotalJoules(sim) + sim.EtherMatterKg * Magic.Spellcasting.EtherPerKg - Sys<EtherSystem>(sim).ReservoirInJ
-        - Sys<StructureSystem>(sim).ReleasedPotentialJ - Sys<BodySystem>(sim).ReleasedPotentialJ;
+        - Sys<StructureSystem>(sim).ReleasedPotentialJ - Sys<BodySystem>(sim).ReleasedPotentialJ - Sys<Magischool.Sim.Ecology.EcologySystem>(sim).LightJ;
 
     private static int Part(Body body, string name)
     {

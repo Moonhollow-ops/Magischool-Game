@@ -262,11 +262,14 @@ public static class BuiltInMaterials
             // starch, C6H10O5), so it burns and digests as bread does: 0.25 (C6H10O5 + 6 O2 -> 6 CO2
             // + 5 H2O), its own water leaving as steam. A meadow holds half a kilogram a tile, so it
             // fills under a percent of the tile and air, light and bodies pass through it; its
-            // leaves shade what is under them (see Ecology.EcologySystem).
+            // leaves shade what is under them (see Ecology.EcologySystem). Its heat of combustion,
+            // like dead grass's, is starch's 17.5 MJ/kg less the latent heat of all the water that
+            // leaves as steam, and its heat capacity is its starch's and water's: so it dies into
+            // dead grass and water without warming or cooling.
             Key = Grass, Name = "Grass", Phase = Phase.Solid, Glyph = 'v', Color = 0x4E9A2E,
-            Density = 800f, SpecificHeat = 3500f, ThermalConductivity = 0.4f,
+            Density = 800f, SpecificHeat = 3464f, ThermalConductivity = 0.4f,
             StrengthLossStartK = 373f, StrengthLossEndK = 573f, IgnitionPoint = 573f,
-            HeatOfCombustion = 2_204_300f, OxygenPerKg = 0.29602f,
+            HeatOfCombustion = 2_223_680f, OxygenPerKg = 0.29602f,
             CombustionProducts = new CombustionProduct[] { new(CarbonDioxide, 0.40713f), new(Steam, 0.88889f) },
             Edible = true, DiesInto = DeadGrass,
             EtherPermittivity = 8f, EtherConductivity = 0.3f, EtherBreakdown = 2e8f,
@@ -277,9 +280,9 @@ public static class BuiltInMaterials
             // Grass that has died and dried to 15% water: straw, or hay. It rots where it lies,
             // by the same chemistry it burns by: 0.85 (C6H10O5 + 6 O2 -> 6 CO2 + 5 H2O).
             Key = DeadGrass, Name = "Dead grass", Phase = Phase.Solid, Glyph = ';', Color = 0xB09A5A,
-            Density = 500f, SpecificHeat = 1700f, ThermalConductivity = 0.1f,
+            Density = 500f, SpecificHeat = 1733f, ThermalConductivity = 0.1f,
             StrengthLossStartK = 373f, StrengthLossEndK = 533f, IgnitionPoint = 533f,
-            HeatOfCombustion = 13_355_500f, OxygenPerKg = 1.00648f,
+            HeatOfCombustion = 13_369_083f, OxygenPerKg = 1.00648f,
             CombustionProducts = new CombustionProduct[] { new(CarbonDioxide, 1.38425f), new(Steam, 0.62223f) },
             Edible = true, DecayPerSecond = 1.1e-7f,
             EtherPermittivity = 5f, EtherConductivity = 0.2f, EtherBreakdown = 2e8f,

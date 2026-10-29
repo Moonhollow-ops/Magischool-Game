@@ -55,7 +55,7 @@ public class MagicTests
     /// </summary>
     private static double Ledger(Simulation sim) =>
         EnergyAudit.TotalJoules(sim) + sim.EtherMatterKg * Spellcasting.EtherPerKg
-        - System<EtherSystem>(sim).ReservoirInJ - System<StructureSystem>(sim).ReleasedPotentialJ;
+        - System<EtherSystem>(sim).ReservoirInJ - System<StructureSystem>(sim).ReleasedPotentialJ - System<Magischool.Sim.Ecology.EcologySystem>(sim).LightJ;
 
     /// <summary>The world's mass less the matter crystallised out of the ether: never changes.</summary>
     private static double MassLedger(Simulation sim)

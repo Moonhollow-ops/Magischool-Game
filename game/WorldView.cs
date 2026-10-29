@@ -3,6 +3,7 @@ using System.IO;
 using Godot;
 using Magischool.Sim.Bodies;
 using Magischool.Sim.Core;
+using Magischool.Sim.Ecology;
 using Magischool.Sim.Fluids;
 using Magischool.Sim.Magic;
 using Magischool.Sim.Materials;
@@ -72,6 +73,7 @@ public partial class WorldView : Node2D
     private void NewWorld(string seed)
     {
         _sim = TestRoomGenerator.Create(seed, _materials, systems: StandardSystems.Create());
+        TestRoomGenerator.Populate(_sim);
         _z = Math.Min(TestRoomGenerator.FloorZ, _sim.Grid.Depth - 1);
         _status = $"New world '{seed}'";
         QueueRedraw();
@@ -148,6 +150,19 @@ public partial class WorldView : Node2D
                 SpendTicks(TicksPerWaitAction);
                 if (_sim.NextBodyId > id) _bodyId = id;
                 _status = _sim.NextBodyId > id ? $"Student {id} stands at ({_hoverX},{_hoverY},{_z})" : "No room to stand there";
+                break;
+            case Key.K when _sim.Grid.InBounds(_hoverX, _hoverY, _z):
+                bool bare = !_sim.Grid.HasCondensed(_sim.Grid.Index(_hoverX, _hoverY, _z));
+                _sim.Enqueue(new PlantSeedling(_hoverX, _hoverY, _z, BuiltInMaterials.Grass));
+                SpendTicks(TicksPerWaitAction);
+                _status = bare && _sim.Grid.HasCondensed(_sim.Grid.Index(_hoverX, _hoverY, _z))
+                    ? $"Grass planted at ({_hoverX},{_hoverY},{_z})" : "Grass needs open air over soil";
+                break;
+            case Key.J when _sim.Grid.InBounds(_hoverX, _hoverY, _z):
+                int rabbit = _sim.NextBodyId;
+                _sim.Enqueue(new SpawnBody(_hoverX, _hoverY, _z, BodyPlans.Rabbit.Key, BodyPlans.DefaultClo(BodyPlans.Rabbit.Key)));
+                SpendTicks(TicksPerWaitAction);
+                _status = _sim.NextBodyId > rabbit ? $"Rabbit {rabbit} at ({_hoverX},{_hoverY},{_z})" : "No room for a rabbit there";
                 break;
             case Key.Left: Steer(-1, 0); break;
             case Key.Right: Steer(1, 0); break;
@@ -257,7 +272,9 @@ public partial class WorldView : Node2D
         for (int x = 0; x < grid.Width; x++)
         {
             int i = grid.Index(x, y, _z);
-            var color = _heatOverlay ? HeatColor(grid.Temperature[i]) : MaterialColor(_materials[grid.DisplayMaterial(i)]);
+            // Plants show however little of the tile they fill.
+            ushort shownMaterial = grid.HasCondensed(i) && _materials[grid.Material[i]].IsPlant ? grid.Material[i] : grid.DisplayMaterial(i);
+            var color = _heatOverlay ? HeatColor(grid.Temperature[i]) : MaterialColor(_materials[shownMaterial]);
             if (!_heatOverlay && SmokeGas >= 0) color = color.Lerp(SmokeColor, SmokeShade(grid, i));
             if (_stressOverlay && grid.HasCondensed(i) && _materials[grid.Material[i]].Phase == Phase.Solid) color = StressColor(grid, i);
             if (_etherOverlay) color = EtherColor(grid.EtherPotential(i));
@@ -272,10 +289,12 @@ public partial class WorldView : Node2D
         {
             if (_z < body.Z || _z >= body.Z + body.HeightTiles) continue;
             var centre = new Vector2((body.X + 0.5f) * TileSize, (body.Y + 0.5f) * TileSize);
-            var color = !body.Alive ? new Color(0.5f, 0.5f, 0.5f) : body.Conscious ? new Color(0.95f, 0.8f, 0.65f) : new Color(0.95f, 0.5f, 0.3f);
+            bool wild = body.Plan.Instinctive;
+            var color = !body.Alive ? new Color(0.5f, 0.5f, 0.5f) : !body.Conscious ? new Color(0.95f, 0.5f, 0.3f)
+                : wild ? new Color(0.62f, 0.5f, 0.38f) : new Color(0.95f, 0.8f, 0.65f);
             var anatomy = body.Anatomy;
             bool head = anatomy.BrainPart >= 0 && _z - body.Z == anatomy.Parts[anatomy.OuterOf(anatomy.BrainPart)].Dz;
-            DrawCircle(centre, TileSize * (body.IsRemains ? 0.2f : head ? 0.3f : 0.4f), color);
+            DrawCircle(centre, TileSize * (body.IsRemains ? 0.2f : wild ? 0.25f : head ? 0.3f : 0.4f), color);
             if (body.Id == _bodyId) DrawArc(centre, TileSize * 0.48f, 0f, MathF.Tau, 16, Colors.White, 1.5f);
             // Which way its eyes look.
             if (!body.IsRemains && body.Alive)
@@ -294,7 +313,7 @@ public partial class WorldView : Node2D
             $"seed '{_sim.Seed}'   tick {_sim.Tick} ({_sim.ElapsedSeconds:0.0} s)   z {_z}/{grid.Depth - 1}   view {mode}   sky {_sim.SkyIlluminanceLux:0.###} lux   brush {_materials[_brush].Name}",
             fontSize: 16);
         DrawString(font, new Vector2(4, hudY + 22),
-            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | S stress | M ether | L light | N day/moon/stars | C caster F fireball X freeze V heat G charge B conjure | P student, arrows step, O face, T eat/drink, Z sleep, Y grow an eye | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
+            "Space 1 tick | Enter 1 s | W 1 min | H 10 min | Q/E z | Tab heat | A air | S stress | M ether | L light | N day/moon/stars | C caster F fireball X freeze V heat G charge B conjure | P student, arrows step, O face, T eat/drink, Z sleep, Y grow an eye | K grass J rabbit | 1-9 brush | LMB place | RMB 1000 K (Shift 100 K) | F5 save | F9 load | R new seed",
             fontSize: 13, modulate: new Color(0.7f, 0.7f, 0.7f));
         if (_status.Length > 0)
             DrawString(font, new Vector2(4, hudY + 42), _status, fontSize: 13, modulate: new Color(1f, 0.85f, 0.4f));
@@ -324,13 +343,17 @@ public partial class WorldView : Node2D
         double celsius = grid.Temperature[i] - 273.15;
         string air = grid.HasTwoTemperatures(i) ? $" (gas {grid.GasTemperature[i] - 273.15:0.0} °C)" : "";
         string burning = grid.Flame[i] != 0 ? "  burning" : "";
+        string soil = EcologySystem.SoilVolume(grid, i) > 0.0 ? $"  soil water {EcologySystem.Moisture(grid, i):P0} by volume" : "";
+        string plant = grid.HasCondensed(i) && _materials[grid.Material[i]].IsPlant
+            ? $"  {grid.Mass[i] * EcologySystem.DryShare(_materials[grid.Material[i]]) * 1000:0} g dry{(grid.PlantStress[i] > 0.01 ? $", stressed {grid.PlantStress[i]:P0}" : "")}"
+            : "";
         string structure = (grid.Structure[i] & WorldGrid.LooseBit) == 0 || !grid.HasCondensed(i) ? ""
             : grid.FallSpeed[i] > 0.0 ? "  falling" : "  loose";
         float load = Structure()?.UtilisationAt(i) ?? 0f;
         string stress = load > 0f ? $"  load {load:P0} of strength" : "";
         string ether = $"  ether {grid.EtherPotential(i) / 1e6:0.##} MJ/m³";
         double lux = LightField.Illuminance(_sim, LightField.AllSources(_sim), x + 0.5, y + 0.5, z + 0.5);
-        return $"({x},{y},{z})  {held}{gases}  {celsius:0.0} °C{air}  {FluidSystem.PressureAt(grid, i) / 1000:0.###} kPa{burning}{structure}{stress}{ether}  light {lux:0.###} lux";
+        return $"({x},{y},{z})  {held}{gases}  {celsius:0.0} °C{air}  {FluidSystem.PressureAt(grid, i) / 1000:0.###} kPa{burning}{soil}{plant}{structure}{stress}{ether}  light {lux:0.###} lux";
     }
 
     private Body? BodyAt(int x, int y)
@@ -341,7 +364,7 @@ public partial class WorldView : Node2D
     }
 
     /// <summary>One line on how a body is: its core and skin, what it feels, and the worst of its injuries.</summary>
-    private static string DescribeBody(Body b)
+    private string DescribeBody(Body b)
     {
         var parts = b.Anatomy.Parts;
         if (b.IsRemains)
@@ -361,7 +384,9 @@ public partial class WorldView : Node2D
         int missing = b.Plan.Parts.Length - parts.Length;
         string body = (missing > 0 ? $"  {missing} parts missing" : missing < 0 ? $"  {-missing} extra parts" : "")
                       + (b.Vision < 0.99 && b.Conscious ? $"  sight {b.Vision:P0}" : "") + (b.Toxins > 0.01 ? $"  poisoned {b.Toxins:P0}" : "");
-        return $"Student {b.Id} {state}  core {b.BloodTemperature - 273.15:0.0} °C  skin {b.MeanSkinTemperature - 273.15:0.0} °C  " +
+        string who = b.Plan.Instinctive ? $"{b.Plan.Name} {b.Id}" : $"Student {b.Id}";
+        if (b.Plan.Instinctive && b.Conscious) state = InstinctSystem.Fright(_sim, b, out _, out _) ? "fleeing" : b.Hunger >= InstinctSystem.GrazeHunger ? "grazing" : "awake";
+        return $"{who} {state}  core {b.BloodTemperature - 273.15:0.0} °C  skin {b.MeanSkinTemperature - 273.15:0.0} °C  " +
                $"{b.MetabolicW:0} W  oxygen {b.OxygenFraction:P0}  blood {b.BloodFraction:P0}  hunger {b.Hunger:P0}  thirst {b.Thirst:P0}  fatigue {b.Fatigue:P0}" +
                $"{(b.ShiverW > 1 ? "  shivering" : "")}{(b.SweatKgPerS > 1e-6 ? "  sweating" : "")}{injury}{body}";
     }
